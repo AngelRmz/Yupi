@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Data;
 using System.Text;
+using Yupi.Data.Base.Adapters.Interfaces;
 using Yupi.Game.Items.Interfaces;
 
 namespace Yupi.Game.Items.Datas
@@ -39,16 +40,16 @@ namespace Yupi.Game.Items.Datas
         {
             ItemId = itemId;
             DataRow row;
-            using (var queryReactor = Yupi.GetDatabaseManager().GetQueryReactor())
+            using (IQueryAdapter commitableQueryReactor = Yupi.GetDatabaseManager().GetQueryReactor())
             {
-                queryReactor.SetQuery(
+                commitableQueryReactor.SetQuery(
                     $"SELECT enabled,current_preset,preset_one,preset_two,preset_three FROM items_moodlight WHERE item_id='{itemId}'");
-                row = queryReactor.GetRow();
+                row = commitableQueryReactor.GetRow();
             }
             if (row != null)
             {
                 Enabled = Yupi.EnumToBool(row["enabled"].ToString());
-                CurrentPreset = (int)row["current_preset"];
+                CurrentPreset = (int) row["current_preset"];
                 Presets = new List<MoodlightPreset>
                 {
                     GeneratePreset((string) row["preset_one"]),
@@ -65,7 +66,7 @@ namespace Yupi.Game.Items.Datas
         /// <returns>MoodlightPreset.</returns>
         internal static MoodlightPreset GeneratePreset(string data)
         {
-            var array = data.Split(',');
+            string[] array = data.Split(',');
             if (!IsValidColor(array[0]))
             {
                 array[0] = "#000000";
@@ -111,8 +112,8 @@ namespace Yupi.Game.Items.Datas
         internal void Enable()
         {
             Enabled = true;
-            using (var queryReactor = Yupi.GetDatabaseManager().GetQueryReactor())
-                queryReactor.RunFastQuery($"UPDATE items_moodlight SET enabled = '1' WHERE item_id = {ItemId}");
+            using (IQueryAdapter commitableQueryReactor = Yupi.GetDatabaseManager().GetQueryReactor())
+                commitableQueryReactor.RunFastQuery($"UPDATE items_moodlight SET enabled = '1' WHERE item_id = {ItemId}");
         }
 
         /// <summary>
@@ -121,8 +122,8 @@ namespace Yupi.Game.Items.Datas
         internal void Disable()
         {
             Enabled = false;
-            using (var queryReactor = Yupi.GetDatabaseManager().GetQueryReactor())
-                queryReactor.RunFastQuery($"UPDATE items_moodlight SET enabled = '0' WHERE item_id = {ItemId}");
+            using (IQueryAdapter commitableQueryReactor = Yupi.GetDatabaseManager().GetQueryReactor())
+                commitableQueryReactor.RunFastQuery($"UPDATE items_moodlight SET enabled = '0' WHERE item_id = {ItemId}");
         }
 
         /// <summary>
@@ -138,7 +139,7 @@ namespace Yupi.Game.Items.Datas
             if (!IsValidColor(color) || (!IsValidIntensity(intensity) && !hax))
                 return;
 
-            var text = "one";
+            string text = "one";
             switch (preset)
             {
                 case 2:
@@ -154,11 +155,11 @@ namespace Yupi.Game.Items.Datas
                     break;
             }
 
-            using (var queryReactor = Yupi.GetDatabaseManager().GetQueryReactor())
+            using (IQueryAdapter commitableQueryReactor = Yupi.GetDatabaseManager().GetQueryReactor())
             {
-                queryReactor.SetQuery(
+                commitableQueryReactor.SetQuery(
                     $"UPDATE items_moodlight SET preset_{text}='{color},{intensity},{Yupi.BoolToEnum(bgOnly)}' WHERE item_id='{ItemId}'");
-                queryReactor.RunQuery();
+                commitableQueryReactor.RunQuery();
             }
 
             GetPreset(preset).ColorCode = color;
@@ -185,8 +186,8 @@ namespace Yupi.Game.Items.Datas
         /// <returns>System.String.</returns>
         internal string GenerateExtraData()
         {
-            var preset = GetPreset(CurrentPreset);
-            var stringBuilder = new StringBuilder();
+            MoodlightPreset preset = GetPreset(CurrentPreset);
+            StringBuilder stringBuilder = new StringBuilder();
             stringBuilder.Append(Enabled ? 2 : 1);
             stringBuilder.Append(",");
             stringBuilder.Append(CurrentPreset);

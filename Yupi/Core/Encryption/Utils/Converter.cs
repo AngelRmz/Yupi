@@ -41,21 +41,21 @@ namespace Yupi.Core.Encryption.Utils
         {
             int numberChars = hexstring.Length;
 
-            byte[] bytes = new byte[numberChars / 2];
+            byte[] bytes = new byte[numberChars/2];
 
             for (int i = 0; i < numberChars; i += 2)
-                bytes[i / 2] = Convert.ToByte(hexstring.Substring(i, 2), 16);
+                bytes[i/2] = Convert.ToByte(hexstring.Substring(i, 2), 16);
 
             return bytes;
         }
 
         public static string Deflate(byte[] bytes)
         {
-            using (var stream = new MemoryStream(bytes, 2, bytes.Length - 2))
+            using (MemoryStream stream = new MemoryStream(bytes, 2, bytes.Length - 2))
 
-            using (var inflater = new DeflateStream(stream, CompressionMode.Decompress))
+            using (DeflateStream inflater = new DeflateStream(stream, CompressionMode.Decompress))
 
-            using (var streamReader = new StreamReader(inflater))
+            using (StreamReader streamReader = new StreamReader(inflater))
                 return streamReader.ReadToEnd();
         }
     }

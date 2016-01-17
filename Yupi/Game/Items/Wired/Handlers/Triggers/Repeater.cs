@@ -22,7 +22,7 @@ namespace Yupi.Game.Items.Wired.Handlers.Triggers
             Room.GetWiredHandler().EnqueueCycle(this);
 
             if (_mNext == 0L || _mNext < Yupi.Now())
-                _mNext = (Yupi.Now() + (Delay));
+                _mNext = Yupi.Now() + Delay;
         }
 
         public Queue ToWork
@@ -35,17 +35,17 @@ namespace Yupi.Game.Items.Wired.Handlers.Triggers
 
         public bool OnCycle()
         {
-            var num = Yupi.Now();
+            long num = Yupi.Now();
 
             if (_mNext >= num)
                 return false;
 
-            var conditions = Room.GetWiredHandler().GetConditions(this);
-            var effects = Room.GetWiredHandler().GetEffects(this);
+            List<IWiredItem> conditions = Room.GetWiredHandler().GetConditions(this);
+            List<IWiredItem> effects = Room.GetWiredHandler().GetEffects(this);
 
             if (conditions.Any())
             {
-                foreach (var current in conditions)
+                foreach (IWiredItem current in conditions)
                 {
                     if (!current.Execute(null))
                         return false;
@@ -56,14 +56,14 @@ namespace Yupi.Game.Items.Wired.Handlers.Triggers
 
             if (effects.Any())
             {
-                foreach (var current2 in effects)
+                foreach (IWiredItem current2 in effects)
                 {
                     if (current2.Execute(null, Type))
                         WiredHandler.OnEvent(current2);
                 }
             }
 
-            _mNext = (Yupi.Now() + (Delay));
+            _mNext = Yupi.Now() + Delay;
             return false;
         }
 
@@ -108,7 +108,7 @@ namespace Yupi.Game.Items.Wired.Handlers.Triggers
         public bool Execute(params object[] stuff)
         {
             if (_mNext == 0L || _mNext < Yupi.Now())
-                _mNext = (Yupi.Now() + (Delay));
+                _mNext = Yupi.Now() + Delay;
 
             if (!Room.GetWiredHandler().IsCycleQueued(this))
                 Room.GetWiredHandler().EnqueueCycle(this);

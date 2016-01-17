@@ -1,4 +1,7 @@
+using System.Data;
 using System.Globalization;
+using Yupi.Data.Base.Adapters.Interfaces;
+using Yupi.Game.Groups.Structs;
 using Yupi.Game.Items.Interactions.Enums;
 using Yupi.Messages;
 
@@ -63,10 +66,10 @@ namespace Yupi.Game.Items.Interfaces
             if (BaseItem == null)
                 return;
 
-            using (var queryReactor = Yupi.GetDatabaseManager().GetQueryReactor())
+            using (IQueryAdapter commitableQueryReactor = Yupi.GetDatabaseManager().GetQueryReactor())
             {
-                queryReactor.SetQuery($"SELECT * FROM items_limited WHERE item_id={id} LIMIT 1");
-                var row = queryReactor.GetRow();
+                commitableQueryReactor.SetQuery($"SELECT * FROM items_limited WHERE item_id={id} LIMIT 1");
+                DataRow row = commitableQueryReactor.GetRow();
 
                 if (row != null)
                 {
@@ -75,7 +78,7 @@ namespace Yupi.Game.Items.Interfaces
                 }
             }
 
-            IsWallItem = (BaseItem.Type == 'i');
+            IsWallItem = BaseItem.Type == 'i';
             SongCode = songCode;
         }
 
@@ -122,17 +125,17 @@ namespace Yupi.Game.Items.Interfaces
             message.AppendString(BaseItem.Type.ToString(CultureInfo.InvariantCulture).ToUpper());
             message.AppendInteger(Id);
             message.AppendInteger(BaseItem.SpriteId);
-            var extraParam = 0;
+            int extraParam = 0;
 
             try
             {
                 if (BaseItem.InteractionType == Interaction.Gift)
                 {
-                    var split = ExtraData.Split((char)9);
+                    string[] split = ExtraData.Split((char) 9);
                     int ribbon, color;
                     int.TryParse(split[2], out ribbon);
                     int.TryParse(split[3], out color);
-                    extraParam = (ribbon * 1000) + color;
+                    extraParam = ribbon*1000 + color;
                 }
             }
             catch
@@ -144,7 +147,7 @@ namespace Yupi.Game.Items.Interfaces
 
             if (BaseItem.IsGroupItem)
             {
-                var group = Yupi.GetGame().GetGroupManager().GetGroup((int) GroupId);
+                Group group = Yupi.GetGame().GetGroupManager().GetGroup(GroupId);
 
                 if (group != null)
                 {
@@ -182,7 +185,7 @@ namespace Yupi.Game.Items.Interfaces
                 switch (BaseItem.InteractionType)
                 {
                     case Interaction.BadgeDisplay:
-                        var extra = ExtraData.Split('|');
+                        string[] extra = ExtraData.Split('|');
                         message.AppendInteger(2);
                         message.AppendInteger(4);
                         message.AppendString("0");
@@ -212,7 +215,7 @@ namespace Yupi.Game.Items.Interfaces
                         }
                         else
                         {
-                            var extradatas = ExtraData.Split(';');
+                            string[] extradatas = ExtraData.Split(';');
 
                             message.AppendInteger(3); // Count Of Values
                             message.AppendString("GENDER");

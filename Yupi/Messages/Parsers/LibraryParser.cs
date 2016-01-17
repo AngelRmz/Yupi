@@ -10,6 +10,8 @@ namespace Yupi.Messages.Parsers
 {
     internal static class LibraryParser
     {
+        public delegate void ParamLess();
+
         internal static Dictionary<int, StaticRequestHandler> Incoming;
         internal static Dictionary<string, string> Library;
         internal static Dictionary<string, int> Outgoing;
@@ -20,10 +22,6 @@ namespace Yupi.Messages.Parsers
         internal static int CountReleases;
         internal static string ReleaseName;
 
-        public delegate void ParamLess();
-
-        internal delegate void StaticRequestHandler(GameClientMessageHandler handler);
-
         public static int OutgoingRequest(string packetName)
         {
             int packetId;
@@ -31,7 +29,7 @@ namespace Yupi.Messages.Parsers
             if (Outgoing.TryGetValue(packetName, out packetId))
                 return packetId;
 
-            Writer.WriteLine("Outgoing " + packetName + " doesn't exist.", "Yupi.Communication");
+            Writer.WriteLine("Outgoing " + packetName + " doesn't exist.", "Yupi.Communication", ConsoleColor.Gray);
 
             return -1;
         }
@@ -48,7 +46,7 @@ namespace Yupi.Messages.Parsers
 
             if (Incoming.ContainsKey(message.Id))
             {
-                if (Yupi.DebugMode)
+                if (Yupi.PacketDebugMode)
                 {
                     Console.WriteLine();
                     Console.Write("INCOMING ");
@@ -66,7 +64,7 @@ namespace Yupi.Messages.Parsers
                 StaticRequestHandler staticRequestHandler = Incoming[message.Id];
                 staticRequestHandler(handler);
             }
-            else if (Yupi.DebugMode)
+            else if (Yupi.PacketDebugMode)
             {
                 Console.WriteLine();
                 Console.Write("INCOMING ");
@@ -99,27 +97,34 @@ namespace Yupi.Messages.Parsers
         {
             CountReleases = 0;
 
-            var filePaths = Directory.GetFiles($"{Yupi.YupiVariablesDirectory}\\Packets", "*.incoming");
+            string[] filePaths = Directory.GetFiles($"{Yupi.YupiVariablesDirectory}\\Packets\\{ReleaseName}", "*.incoming");
 
-            foreach (var fileContents in filePaths.Select(currentFile => File.ReadAllLines(currentFile, Encoding.UTF8)))
+            foreach (string[] fileContents in filePaths.Select(currentFile => File.ReadAllLines(currentFile, Encoding.UTF8)))
             {
                 CountReleases++;
 
-                foreach (var fields in fileContents.Where(line => !string.IsNullOrEmpty(line) && !line.StartsWith("[")).Select(line => line.Replace(" ", string.Empty).Split('=')))
+                foreach (
+                    string[] fields in
+                        fileContents.Where(line => !string.IsNullOrEmpty(line) && !line.StartsWith("["))
+                            .Select(line => line.Replace(" ", string.Empty).Split('=')))
                 {
-                    var packetName = fields[0];
+                    string packetName = fields[0];
 
                     if (fields[1].Contains('/'))
                         fields[1] = fields[1].Split('/')[0];
 
-                    var packetId = fields[1].ToLower().Contains('x') ? Convert.ToInt32(fields[1], 16) : Convert.ToInt32(fields[1]);
+                    int packetId = fields[1].ToLower().Contains('x')
+                        ? Convert.ToInt32(fields[1], 16)
+                        : Convert.ToInt32(fields[1]);
 
                     if (!Library.ContainsKey(packetName))
                         continue;
 
-                    var libValue = Library[packetName];
+                    string libValue = Library[packetName];
 
-                    var del = (PacketLibrary.GetProperty)Delegate.CreateDelegate(typeof(PacketLibrary.GetProperty), typeof(PacketLibrary), libValue);
+                    PacketLibrary.GetProperty del =
+                        (PacketLibrary.GetProperty)
+                            Delegate.CreateDelegate(typeof (PacketLibrary.GetProperty), typeof (PacketLibrary), libValue);
 
                     if (Incoming.ContainsKey(packetId))
                     {
@@ -136,8 +141,14 @@ namespace Yupi.Messages.Parsers
 
         internal static void RegisterConfig()
         {
-            var filePaths = Directory.GetFiles($"{Yupi.YupiVariablesDirectory}\\Packets", "*.inf");
-            foreach (var fields in filePaths.Select(File.ReadAllLines).SelectMany(fileContents => fileContents.Where(line => !string.IsNullOrEmpty(line) && !line.StartsWith("[")).Select(line => line.Split('='))))
+            string[] filePaths = Directory.GetFiles($"{Yupi.YupiVariablesDirectory}\\Packets\\{ReleaseName}", "*.inf");
+            foreach (
+                string[] fields in
+                    filePaths.Select(File.ReadAllLines)
+                        .SelectMany(
+                            fileContents =>
+                                fileContents.Where(line => !string.IsNullOrEmpty(line) && !line.StartsWith("["))
+                                    .Select(line => line.Split('='))))
             {
                 if (fields[1].Contains('/'))
                     fields[1] = fields[1].Split('/')[0];
@@ -150,20 +161,26 @@ namespace Yupi.Messages.Parsers
         {
             _registeredOutoings = new List<uint>();
 
-            var filePaths = Directory.GetFiles($"{Yupi.YupiVariablesDirectory}\\Packets", "*.outgoing");
-            foreach (var fields in filePaths.Select(File.ReadAllLines).SelectMany(fileContents => fileContents.Where(line => !string.IsNullOrEmpty(line) && !line.StartsWith("[")).Select(line => line.Replace(" ", string.Empty).Split('='))))
+            string[] filePaths = Directory.GetFiles($"{Yupi.YupiVariablesDirectory}\\Packets\\{ReleaseName}", "*.outgoing");
+            foreach (
+                string[] fields in
+                    filePaths.Select(File.ReadAllLines)
+                        .SelectMany(
+                            fileContents =>
+                                fileContents.Where(line => !string.IsNullOrEmpty(line) && !line.StartsWith("["))
+                                    .Select(line => line.Replace(" ", string.Empty).Split('='))))
             {
                 if (fields[1].Contains('/'))
                     fields[1] = fields[1].Split('/')[0];
 
-                var packetName = fields[0];
-                var packetId = int.Parse(fields[1]);
+                string packetName = fields[0];
+                int packetId = int.Parse(fields[1]);
 
                 if (packetId != -1)
                 {
                     //Writer.LogMessage("A Outgoing Packet With Same ID Was Encountred. Packet Id: " + packetId, false);
-                    if (!_registeredOutoings.Contains((uint)packetId))
-                        _registeredOutoings.Add((uint)packetId);
+                    if (!_registeredOutoings.Contains((uint) packetId))
+                        _registeredOutoings.Add((uint) packetId);
                 }
 
                 Outgoing.Add(packetName, packetId);
@@ -175,16 +192,21 @@ namespace Yupi.Messages.Parsers
 
         internal static void RegisterLibrary()
         {
-            var filePaths = Directory.GetFiles($"{Yupi.YupiVariablesDirectory}\\Packets", "*.library");
-            foreach (var fields in filePaths.Select(File.ReadAllLines).SelectMany(fileContents => fileContents.Select(line => line.Split('='))))
+            string[] filePaths = Directory.GetFiles($"{Yupi.YupiVariablesDirectory}\\Packets\\{ReleaseName}", "*.library");
+            foreach (
+                string[] fields in
+                    filePaths.Select(File.ReadAllLines)
+                        .SelectMany(fileContents => fileContents.Select(line => line.Split('='))))
             {
                 if (fields[1].Contains('/'))
                     fields[1] = fields[1].Split('/')[0];
 
-                var incomingName = fields[0];
-                var libraryName = fields[1];
+                string incomingName = fields[0];
+                string libraryName = fields[1];
                 Library.Add(incomingName, libraryName);
             }
         }
+
+        internal delegate void StaticRequestHandler(GameClientMessageHandler handler);
     }
 }

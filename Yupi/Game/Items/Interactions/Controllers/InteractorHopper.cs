@@ -1,6 +1,8 @@
+using Yupi.Data.Base.Adapters.Interfaces;
 using Yupi.Game.GameClients.Interfaces;
 using Yupi.Game.Items.Interactions.Models;
 using Yupi.Game.Items.Interfaces;
+using Yupi.Game.Rooms.User;
 
 namespace Yupi.Game.Items.Interactions.Controllers
 {
@@ -10,18 +12,19 @@ namespace Yupi.Game.Items.Interactions.Controllers
         {
             item.GetRoom().GetRoomItemHandler().HopperCount++;
 
-            using (var queryReactor = Yupi.GetDatabaseManager().GetQueryReactor())
+            using (IQueryAdapter commitableQueryReactor = Yupi.GetDatabaseManager().GetQueryReactor())
             {
-                queryReactor.SetQuery("INSERT INTO items_hopper (hopper_id, room_id) VALUES (@hopperid, @roomid);");
-                queryReactor.AddParameter("hopperid", item.Id);
-                queryReactor.AddParameter("roomid", item.RoomId);
-                queryReactor.RunQuery();
+                commitableQueryReactor.SetQuery(
+                    "INSERT INTO items_hopper (hopper_id, room_id) VALUES (@hopperid, @roomid);");
+                commitableQueryReactor.AddParameter("hopperid", item.Id);
+                commitableQueryReactor.AddParameter("roomid", item.RoomId);
+                commitableQueryReactor.RunQuery();
             }
 
             if (item.InteractingUser == 0u)
                 return;
 
-            var roomUserByHabbo = item.GetRoom().GetRoomUserManager().GetRoomUserByHabbo(item.InteractingUser);
+            RoomUser roomUserByHabbo = item.GetRoom().GetRoomUserManager().GetRoomUserByHabbo(item.InteractingUser);
 
             if (roomUserByHabbo != null)
             {
@@ -37,18 +40,18 @@ namespace Yupi.Game.Items.Interactions.Controllers
         {
             item.GetRoom().GetRoomItemHandler().HopperCount--;
 
-            using (var queryReactor = Yupi.GetDatabaseManager().GetQueryReactor())
+            using (IQueryAdapter commitableQueryReactor = Yupi.GetDatabaseManager().GetQueryReactor())
             {
-                queryReactor.SetQuery(
+                commitableQueryReactor.SetQuery(
                     $"DELETE FROM items_hopper WHERE item_id=@hid OR room_id={item.GetRoom().RoomId} LIMIT 1");
-                queryReactor.AddParameter("hid", item.Id);
-                queryReactor.RunQuery();
+                commitableQueryReactor.AddParameter("hid", item.Id);
+                commitableQueryReactor.RunQuery();
             }
 
             if (item.InteractingUser == 0u)
                 return;
 
-            var roomUserByHabbo = item.GetRoom().GetRoomUserManager().GetRoomUserByHabbo(item.InteractingUser);
+            RoomUser roomUserByHabbo = item.GetRoom().GetRoomUserManager().GetRoomUserByHabbo(item.InteractingUser);
 
             roomUserByHabbo?.UnlockWalking();
 
@@ -60,7 +63,7 @@ namespace Yupi.Game.Items.Interactions.Controllers
             if (item?.GetRoom() == null || session == null || session.GetHabbo() == null)
                 return;
 
-            var roomUserByHabbo = item.GetRoom().GetRoomUserManager().GetRoomUserByHabbo(session.GetHabbo().Id);
+            RoomUser roomUserByHabbo = item.GetRoom().GetRoomUserManager().GetRoomUserByHabbo(session.GetHabbo().Id);
 
             if (roomUserByHabbo == null)
                 return;

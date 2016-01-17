@@ -4,14 +4,13 @@ using System.Collections.Specialized;
 using System.Drawing;
 using System.Linq;
 using System.Text;
-using Yupi.Core.Io;
 using Yupi.Core.Util.Coordinates;
 using Yupi.Data;
 using Yupi.Game.GameClients.Interfaces;
 using Yupi.Game.Items.Interactions.Enums;
 using Yupi.Game.Items.Interfaces;
 using Yupi.Game.Items.Wired.Handlers;
-using Yupi.Game.Pathfinding;
+using Yupi.Game.Pathfinding.Vectors;
 using Yupi.Game.Rooms.Chat.Enums;
 using Yupi.Game.Rooms.Data;
 using Yupi.Game.Rooms.Items.Games.Teams.Enums;
@@ -143,8 +142,8 @@ namespace Yupi.Game.Rooms.User.Path
         internal static Dictionary<int, ThreeDCoord> GetAffectedTiles(int length, int width,
             int posX, int posY, int rotation)
         {
-            var x = 0;
-            var pointList = new Dictionary<int, ThreeDCoord>();
+            int x = 0;
+            Dictionary<int, ThreeDCoord> pointList = new Dictionary<int, ThreeDCoord>();
             if (length == 1 && width == 1)
                 pointList.Add(x++, new ThreeDCoord(posX, posY, 0));
             if (length > 1)
@@ -152,21 +151,21 @@ namespace Yupi.Game.Rooms.User.Path
                 {
                     case 4:
                     case 0:
-                        for (var i = 0; i < length; i++)
+                        for (int i = 0; i < length; i++)
                         {
                             pointList.Add(x++, new ThreeDCoord(posX, posY + i, i));
-                            for (var j = 1; j < width; j++)
-                                pointList.Add(x++, new ThreeDCoord(posX + j, posY + i, (i < j) ? j : i));
+                            for (int j = 1; j < width; j++)
+                                pointList.Add(x++, new ThreeDCoord(posX + j, posY + i, i < j ? j : i));
                         }
                         break;
 
                     case 6:
                     case 2:
-                        for (var i = 0; i < length; i++)
+                        for (int i = 0; i < length; i++)
                         {
                             pointList.Add(x++, new ThreeDCoord(posX + i, posY, i));
-                            for (var j = 1; j < width; j++)
-                                pointList.Add(x++, new ThreeDCoord(posX + i, posY + j, (i < j) ? j : i));
+                            for (int j = 1; j < width; j++)
+                                pointList.Add(x++, new ThreeDCoord(posX + i, posY + j, i < j ? j : i));
                         }
                         break;
                 }
@@ -176,21 +175,21 @@ namespace Yupi.Game.Rooms.User.Path
             {
                 case 4:
                 case 0:
-                    for (var i = 0; i < width; i++)
+                    for (int i = 0; i < width; i++)
                     {
                         pointList.Add(x++, new ThreeDCoord(posX + i, posY, i));
-                        for (var j = 1; j < length; j++)
-                            pointList.Add(x++, new ThreeDCoord(posX + i, posY + j, (i < j) ? j : i));
+                        for (int j = 1; j < length; j++)
+                            pointList.Add(x++, new ThreeDCoord(posX + i, posY + j, i < j ? j : i));
                     }
                     break;
 
                 case 6:
                 case 2:
-                    for (var i = 0; i < width; i++)
+                    for (int i = 0; i < width; i++)
                     {
                         pointList.Add(x++, new ThreeDCoord(posX, posY + i, i));
-                        for (var j = 1; j < length; j++)
-                            pointList.Add(x++, new ThreeDCoord(posX + j, posY + i, (i < j) ? j : i));
+                        for (int j = 1; j < length; j++)
+                            pointList.Add(x++, new ThreeDCoord(posX + j, posY + i, i < j ? j : i));
                     }
                     break;
             }
@@ -221,7 +220,7 @@ namespace Yupi.Game.Rooms.User.Path
         /// <returns>System.Int32.</returns>
         internal static int TileDistance(int x1, int y1, int x2, int y2)
         {
-            return (Math.Abs(x1 - x2) + Math.Abs(y1 - y2));
+            return Math.Abs(x1 - x2) + Math.Abs(y1 - y2);
         }
 
         /// <summary>
@@ -231,8 +230,8 @@ namespace Yupi.Game.Rooms.User.Path
         /// <param name="coord">The coord.</param>
         internal void AddUserToMap(RoomUser user, Point coord)
         {
-            var coordKey = CoordinatesFormatter.PointToInt(coord);
-            var users = (List<RoomUser>) _userMap[coordKey];
+            int coordKey = CoordinatesFormatter.PointToInt(coord);
+            List<RoomUser> users = (List<RoomUser>) _userMap[coordKey];
 
             if (users != null)
             {
@@ -288,8 +287,8 @@ namespace Yupi.Game.Rooms.User.Path
         /// <param name="coord">The coord.</param>
         internal void RemoveUserFromMap(RoomUser user, Point coord)
         {
-            var coordKey = CoordinatesFormatter.PointToInt(coord);
-            var users = (List<RoomUser>) _userMap[coordKey];
+            int coordKey = CoordinatesFormatter.PointToInt(coord);
+            List<RoomUser> users = (List<RoomUser>) _userMap[coordKey];
             if (users != null)
                 users.Remove(user);
         }
@@ -311,8 +310,8 @@ namespace Yupi.Game.Rooms.User.Path
         /// <returns>List&lt;RoomUser&gt;.</returns>
         internal List<RoomUser> GetRoomUsers(Point coord)
         {
-            var coordKey = CoordinatesFormatter.PointToInt(coord);
-            var users = (List<RoomUser>) _userMap[coordKey];
+            int coordKey = CoordinatesFormatter.PointToInt(coord);
+            List<RoomUser> users = (List<RoomUser>) _userMap[coordKey];
             if (users != null)
                 return users;
             return new List<RoomUser>();
@@ -327,9 +326,9 @@ namespace Yupi.Game.Rooms.User.Path
             if (!WalkableList.Any())
                 return new Point(0, 0);
 
-            var randomNumber = new Random().Next(0, WalkableList.Count);
-            var num = 0;
-            foreach (var current in WalkableList)
+            int randomNumber = new Random().Next(0, WalkableList.Count);
+            int num = 0;
+            foreach (Point current in WalkableList)
             {
                 if (num == randomNumber)
                     return current;
@@ -344,45 +343,45 @@ namespace Yupi.Game.Rooms.User.Path
         /// <returns>System.String.</returns>
         internal string GenerateMapDump()
         {
-            var stringBuilder = new StringBuilder();
+            StringBuilder stringBuilder = new StringBuilder();
             stringBuilder.AppendLine("Game map:");
-            for (var i = 0; i < Model.MapSizeY; i++)
+            for (int i = 0; i < Model.MapSizeY; i++)
             {
-                var stringBuilder2 = new StringBuilder();
-                for (var j = 0; j < Model.MapSizeX; j++) stringBuilder2.Append(GameMap[j, i].ToString());
+                StringBuilder stringBuilder2 = new StringBuilder();
+                for (int j = 0; j < Model.MapSizeX; j++) stringBuilder2.Append(GameMap[j, i].ToString());
                 stringBuilder.AppendLine(stringBuilder2.ToString());
             }
             stringBuilder.AppendLine();
             stringBuilder.AppendLine("Item height map:");
-            for (var k = 0; k < Model.MapSizeY; k++)
+            for (int k = 0; k < Model.MapSizeY; k++)
             {
-                var stringBuilder3 = new StringBuilder();
-                for (var l = 0; l < Model.MapSizeX; l++) stringBuilder3.AppendFormat("[{0}]", ItemHeightMap[l, k]);
+                StringBuilder stringBuilder3 = new StringBuilder();
+                for (int l = 0; l < Model.MapSizeX; l++) stringBuilder3.AppendFormat("[{0}]", ItemHeightMap[l, k]);
                 stringBuilder.AppendLine(stringBuilder3.ToString());
             }
             stringBuilder.AppendLine();
             stringBuilder.AppendLine("Static data:");
-            for (var m = 0; m < Model.MapSizeY; m++)
+            for (int m = 0; m < Model.MapSizeY; m++)
             {
-                var stringBuilder4 = new StringBuilder();
-                for (var n = 0; n < Model.MapSizeX; n++) stringBuilder4.AppendFormat("[{0}]", Model.SqState[n][m]);
+                StringBuilder stringBuilder4 = new StringBuilder();
+                for (int n = 0; n < Model.MapSizeX; n++) stringBuilder4.AppendFormat("[{0}]", Model.SqState[n][m]);
                 stringBuilder.AppendLine(stringBuilder4.ToString());
             }
             stringBuilder.AppendLine();
             stringBuilder.AppendLine("Static data height:");
-            for (var num = 0; num < Model.MapSizeY; num++)
+            for (int num = 0; num < Model.MapSizeY; num++)
             {
-                var stringBuilder5 = new StringBuilder();
-                for (var num2 = 0; num2 < Model.MapSizeX; num2++)
+                StringBuilder stringBuilder5 = new StringBuilder();
+                for (int num2 = 0; num2 < Model.MapSizeX; num2++)
                     stringBuilder5.AppendFormat("[{0}]", Model.SqFloorHeight[num2][num]);
                 stringBuilder.AppendLine(stringBuilder5.ToString());
             }
             stringBuilder.AppendLine();
             stringBuilder.AppendLine("Pool map:");
-            for (var num3 = 0; num3 < Model.MapSizeY; num3++)
+            for (int num3 = 0; num3 < Model.MapSizeY; num3++)
             {
-                var stringBuilder6 = new StringBuilder();
-                for (var num4 = 0; num4 < Model.MapSizeX; num4++)
+                StringBuilder stringBuilder6 = new StringBuilder();
+                for (int num4 = 0; num4 < Model.MapSizeX; num4++)
                     stringBuilder6.AppendFormat("[{0}]", EffectMap[num4, num3]);
                 stringBuilder.AppendLine(stringBuilder6.ToString());
             }
@@ -417,15 +416,15 @@ namespace Yupi.Game.Rooms.User.Path
         {
             try
             {
-                var xMap = 0;
-                var yMap = 0;
+                int xMap = 0;
+                int yMap = 0;
 
                 CoordinatedItems.Clear();
 
                 if (checkLines)
                 {
-                    var roomItema = _room.GetRoomItemHandler().FloorItems.Values.ToArray();
-                    foreach (var roomItems in roomItema)
+                    RoomItem[] roomItema = _room.GetRoomItemHandler().FloorItems.Values.ToArray();
+                    foreach (RoomItem roomItems in roomItema)
                     {
                         if (roomItems.X > Model.MapSizeX && roomItems.X > xMap)
                             xMap = roomItems.X;
@@ -454,8 +453,8 @@ namespace Yupi.Game.Rooms.User.Path
                     EffectMap = new byte[Model.MapSizeX, Model.MapSizeY];
                     GameMap = new byte[Model.MapSizeX, Model.MapSizeY];
                     ItemHeightMap = new double[Model.MapSizeX, Model.MapSizeY];
-                    for (var j = 0; j < Model.MapSizeY; j++)
-                        for (var k = 0; k < Model.MapSizeX; k++)
+                    for (int j = 0; j < Model.MapSizeY; j++)
+                        for (int k = 0; k < Model.MapSizeX; k++)
                         {
                             GameMap[k, j] = 0;
                             EffectMap[k, j] = 0;
@@ -483,9 +482,9 @@ namespace Yupi.Game.Rooms.User.Path
                         }
                     if (GotPublicPool)
                     {
-                        for (var l = 0; l < StaticModel.MapSizeY; l++)
+                        for (int l = 0; l < StaticModel.MapSizeY; l++)
                         {
-                            for (var m = 0; m < StaticModel.MapSizeX; m++)
+                            for (int m = 0; m < StaticModel.MapSizeX; m++)
                             {
                                 if (StaticModel.MRoomModelfx[m][l] != 0)
                                 {
@@ -501,9 +500,9 @@ namespace Yupi.Game.Rooms.User.Path
                     EffectMap = new byte[Model.MapSizeX, Model.MapSizeY];
                     GameMap = new byte[Model.MapSizeX, Model.MapSizeY];
                     ItemHeightMap = new double[Model.MapSizeX, Model.MapSizeY];
-                    for (var n = 0; n < Model.MapSizeY; n++)
+                    for (int n = 0; n < Model.MapSizeY; n++)
                     {
-                        for (var num3 = 0; num3 < Model.MapSizeX; num3++)
+                        for (int num3 = 0; num3 < Model.MapSizeX; num3++)
                         {
                             GameMap[num3, n] = 0;
                             EffectMap[num3, n] = 0;
@@ -532,9 +531,9 @@ namespace Yupi.Game.Rooms.User.Path
                     }
                     if (GotPublicPool)
                     {
-                        for (var num4 = 0; num4 < StaticModel.MapSizeY; num4++)
+                        for (int num4 = 0; num4 < StaticModel.MapSizeY; num4++)
                         {
-                            for (var num5 = 0; num5 < StaticModel.MapSizeX; num5++)
+                            for (int num5 = 0; num5 < StaticModel.MapSizeX; num5++)
                             {
                                 if (StaticModel.MRoomModelfx[num5][num4] != 0)
                                 {
@@ -545,9 +544,9 @@ namespace Yupi.Game.Rooms.User.Path
                     }
                 }
 
-                var roomItem = _room.GetRoomItemHandler().FloorItems.Values.ToArray();
+                RoomItem[] roomItem = _room.GetRoomItemHandler().FloorItems.Values.ToArray();
 
-                foreach (var item in roomItem)
+                foreach (RoomItem item in roomItem)
                 {
                     if (!AddItemToMap(item))
                         break;
@@ -555,7 +554,7 @@ namespace Yupi.Game.Rooms.User.Path
 
                 if (!_room.RoomData.AllowWalkThrough)
                 {
-                    foreach (var current in _room.GetRoomUserManager().UserList.Values)
+                    foreach (RoomUser current in _room.GetRoomUserManager().UserList.Values)
                     {
                         current.SqState = GameMap[current.X, current.Y];
                         GameMap[current.X, current.Y] = 0;
@@ -566,8 +565,7 @@ namespace Yupi.Game.Rooms.User.Path
             }
             catch (Exception ex)
             {
-                ServerLogManager.LogException("Exception RoomData Loading on (GenerateMaps): " + ex);
-                ServerLogManager.HandleException(ex, "Yupi.HabboHotel.Rooms.Gamemap");
+                ServerLogManager.LogException(ex, "Yupi.Game.Rooms.User.Path.GenerateMaps");
             }
         }
 
@@ -578,8 +576,8 @@ namespace Yupi.Game.Rooms.User.Path
         /// <param name="coord">The coord.</param>
         internal void AddCoordinatedItem(RoomItem item, Point coord)
         {
-            var coordKey = CoordinatesFormatter.PointToInt(coord);
-            var items = (List<RoomItem>) CoordinatedItems[coordKey];
+            int coordKey = CoordinatesFormatter.PointToInt(coord);
+            List<RoomItem> items = (List<RoomItem>) CoordinatedItems[coordKey];
 
             if (items == null)
             {
@@ -602,8 +600,8 @@ namespace Yupi.Game.Rooms.User.Path
         /// <returns>List&lt;RoomItem&gt;.</returns>
         internal List<RoomItem> GetCoordinatedItems(Point coord)
         {
-            var coordKey = CoordinatesFormatter.PointToInt(coord);
-            var items = (List<RoomItem>) CoordinatedItems[coordKey];
+            int coordKey = CoordinatesFormatter.PointToInt(coord);
+            List<RoomItem> items = (List<RoomItem>) CoordinatedItems[coordKey];
             if (items != null)
                 return items;
             return new List<RoomItem>();
@@ -617,8 +615,8 @@ namespace Yupi.Game.Rooms.User.Path
         /// <returns><c>true</c> if XXXX, <c>false</c> otherwise.</returns>
         internal bool RemoveCoordinatedItem(RoomItem item, Point coord)
         {
-            var coordKey = CoordinatesFormatter.PointToInt(coord);
-            var items = (List<RoomItem>) CoordinatedItems[coordKey];
+            int coordKey = CoordinatesFormatter.PointToInt(coord);
+            List<RoomItem> items = (List<RoomItem>) CoordinatedItems[coordKey];
             if (items != null)
             {
                 items.Remove(item);
@@ -629,17 +627,17 @@ namespace Yupi.Game.Rooms.User.Path
 
         internal List<RoomItem> GetCoordinatedHeighestItems(Point coord)
         {
-            var coordKey = CoordinatesFormatter.PointToInt(coord);
-            var items = (List<RoomItem>) CoordinatedItems[coordKey];
+            int coordKey = CoordinatesFormatter.PointToInt(coord);
+            List<RoomItem> items = (List<RoomItem>) CoordinatedItems[coordKey];
             if (items == null)
                 return new List<RoomItem>();
 
             if (items.Count == 1)
                 return items;
-            var returnItems = new List<RoomItem>();
+            List<RoomItem> returnItems = new List<RoomItem>();
             double heighest = -1;
 
-            foreach (var i in items)
+            foreach (RoomItem i in items)
             {
                 if (i.TotalHeight > heighest)
                 {
@@ -665,16 +663,16 @@ namespace Yupi.Game.Rooms.User.Path
             RemoveSpecialItem(item);
             if (_room.GotSoccer())
                 _room.GetSoccer().OnGateRemove(item);
-            var result = false;
-            foreach (var current in item.GetCoords.Where(current => RemoveCoordinatedItem(item, current)))
+            bool result = false;
+            foreach (Point current in item.GetCoords.Where(current => RemoveCoordinatedItem(item, current)))
                 result = true;
-            var hybridDictionary = new HybridDictionary();
-            foreach (var current2 in item.GetCoords)
+            HybridDictionary hybridDictionary = new HybridDictionary();
+            foreach (Point current2 in item.GetCoords)
             {
-                var point = CoordinatesFormatter.PointToInt(current2);
+                int point = CoordinatesFormatter.PointToInt(current2);
                 if (CoordinatedItems.Contains(point))
                 {
-                    var value = (List<RoomItem>) CoordinatedItems[point];
+                    List<RoomItem> value = (List<RoomItem>) CoordinatedItems[point];
                     if (!hybridDictionary.Contains(current2))
                         hybridDictionary.Add(current2, value);
                 }
@@ -682,8 +680,8 @@ namespace Yupi.Game.Rooms.User.Path
             }
             foreach (Point point2 in hybridDictionary.Keys)
             {
-                var list = (List<RoomItem>) hybridDictionary[point2];
-                foreach (var current3 in list)
+                List<RoomItem> list = (List<RoomItem>) hybridDictionary[point2];
+                foreach (RoomItem current3 in list)
                     ConstructMapForItem(current3, point2);
             }
             if (GuildGates.ContainsKey(item.Coordinate))
@@ -715,7 +713,7 @@ namespace Yupi.Game.Rooms.User.Path
             if (handleGameItem)
             {
                 AddSpecialItems(item);
-                var interactionType = item.GetBaseItem().InteractionType;
+                Interaction interactionType = item.GetBaseItem().InteractionType;
                 if (interactionType != Interaction.Roller)
                     switch (interactionType)
                     {
@@ -771,7 +769,7 @@ namespace Yupi.Game.Rooms.User.Path
             }
             if (item.GetBaseItem().Type != 's')
                 return true;
-            foreach (var coord in item.GetCoords.Select(current => new Point(current.X, current.Y)))
+            foreach (Point coord in item.GetCoords.Select(current => new Point(current.X, current.Y)))
             {
                 AddCoordinatedItem(item, coord);
             }
@@ -788,7 +786,7 @@ namespace Yupi.Game.Rooms.User.Path
                 return false;
             }
 
-            foreach (var coord in item.GetCoords)
+            foreach (Point coord in item.GetCoords)
                 if (!ConstructMapForItem(item, coord))
                     return false;
 
@@ -830,7 +828,7 @@ namespace Yupi.Game.Rooms.User.Path
         {
             try
             {
-                var high = Model.SqFloorHeight.GetUpperBound(0);
+                int high = Model.SqFloorHeight.GetUpperBound(0);
                 if (coord.X > high || coord.Y > Model.SqFloorHeight[high].GetUpperBound(0))
                     return 1.0;
                 return Model.SqFloorHeight[coord.X][coord.Y];
@@ -861,7 +859,7 @@ namespace Yupi.Game.Rooms.User.Path
         /// <returns><c>true</c> if XXXX, <c>false</c> otherwise.</returns>
         internal bool SquareIsOpen(int x, int y, bool pOverride)
         {
-            return (Model.MapSizeX - 1 >= x && Model.MapSizeY - 1 >= y) && CanWalk(GameMap[x, y], pOverride);
+            return Model.MapSizeX - 1 >= x && Model.MapSizeY - 1 >= y && CanWalk(GameMap[x, y], pOverride);
         }
 
         /// <summary>
@@ -880,12 +878,12 @@ namespace Yupi.Game.Rooms.User.Path
             if (user == null)
                 return false;
 
-            var square = new Point(to.X, to.Y);
+            Point square = new Point(to.X, to.Y);
             if (GuildGates.ContainsKey(square) && user.GetClient() != null && user.GetClient().GetHabbo() != null &&
                 user.GetClient().GetHabbo().UserGroups != null)
             {
-                var roomItem = GuildGates[square];
-                var guildId = roomItem.GroupId;
+                RoomItem roomItem = GuildGates[square];
+                uint guildId = roomItem.GroupId;
                 if (guildId > 0 &&
                     user.GetClient().GetHabbo().UserGroups.Any(member => member != null && member.GroupId == guildId))
                 {
@@ -901,8 +899,8 @@ namespace Yupi.Game.Rooms.User.Path
             if (Override)
                 return true;
 
-            if (((GameMap[to.X, to.Y] == 3 && !endOfPath) || GameMap[to.X, to.Y] == 0 ||
-                 (GameMap[to.X, to.Y] == 2 && !endOfPath)))
+            if ((GameMap[to.X, to.Y] == 3 && !endOfPath) || GameMap[to.X, to.Y] == 0 ||
+                (GameMap[to.X, to.Y] == 2 && !endOfPath))
             {
                 user.Path.Clear();
                 user.PathRecalcNeeded = false;
@@ -910,7 +908,7 @@ namespace Yupi.Game.Rooms.User.Path
                 return false;
             }
 
-            var userRoom = _room.GetRoomUserManager().GetUserForSquare(to.X, to.Y);
+            RoomUser userRoom = _room.GetRoomUserManager().GetUserForSquare(to.X, to.Y);
             if (userRoom != null && !userRoom.IsWalking && endOfPath)
                 return false;
 
@@ -933,8 +931,8 @@ namespace Yupi.Game.Rooms.User.Path
 
             if (GuildGates.ContainsKey(to))
             {
-                var roomItem = GuildGates[to];
-                var guildId = roomItem.GroupId;
+                RoomItem roomItem = GuildGates[to];
+                uint guildId = roomItem.GroupId;
                 if (guildId > 0)
                     if (user.GetClient().GetHabbo() != null &&
                         user.GetClient().GetHabbo().MyGroups != null &&
@@ -953,7 +951,7 @@ namespace Yupi.Game.Rooms.User.Path
                 GameMap[to.X, to.Y] == 2 && !endOfPath ||
                 SqAbsoluteHeight(to.X, to.Y) - SqAbsoluteHeight(@from.X, @from.Y) > 1.5)
                 return false;
-            var userForSquare = _room.GetRoomUserManager().GetUserForSquare(to.X, to.Y);
+            RoomUser userForSquare = _room.GetRoomUserManager().GetUserForSquare(to.X, to.Y);
             if (userForSquare != null && endOfPath && !_room.RoomData.AllowWalkThrough)
             {
                 user.HasPathBlocked = true;
@@ -963,11 +961,11 @@ namespace Yupi.Game.Rooms.User.Path
                 _room.GetRoomUserManager().UpdateUserStatus(user, false);
                 if (user.RidingHorse && !user.IsPet && !user.IsBot)
                 {
-                    var roomUserByVirtualId =
+                    RoomUser roomUserByVirtualId =
                         _room.GetRoomUserManager().GetRoomUserByVirtualId(Convert.ToInt32(user.HorseId));
                     roomUserByVirtualId.IsWalking = false;
                     roomUserByVirtualId.RemoveStatus("mv");
-                    var message = new ServerMessage(LibraryParser.OutgoingRequest("UpdateUserStatusMessageComposer"));
+                    ServerMessage message = new ServerMessage(LibraryParser.OutgoingRequest("UpdateUserStatusMessageComposer"));
                     message.AppendInteger(1);
                     roomUserByVirtualId.SerializeStatus(message, "");
                     user.GetClient().GetHabbo().CurrentRoom.SendMessage(message);
@@ -990,7 +988,7 @@ namespace Yupi.Game.Rooms.User.Path
         {
             RoomUser roomUser;
             _room.GetRoomUserManager().ToSet.TryGetValue(new Point(x, y), out roomUser);
-            return (roomUser == null || roomUser == user);
+            return roomUser == null || roomUser == user;
         }
 
         /// <summary>
@@ -999,14 +997,14 @@ namespace Yupi.Game.Rooms.User.Path
         /// <returns>Point.</returns>
         internal Point GetRandomValidWalkableSquare()
         {
-            var walkableSquares = new List<Point>();
-            for (var y = 0; y < GameMap.GetUpperBound(1) - 1; y++)
-                for (var x = 0; x < GameMap.GetUpperBound(0) - 1; x++)
+            List<Point> walkableSquares = new List<Point>();
+            for (int y = 0; y < GameMap.GetUpperBound(1) - 1; y++)
+                for (int x = 0; x < GameMap.GetUpperBound(0) - 1; x++)
                     if (StaticModel.DoorX != x && StaticModel.DoorY != y && GameMap[x, y] == 1)
                         walkableSquares.Add(new Point(x, y));
-            var randomNumber = Yupi.GetRandomNumber(0, walkableSquares.Count);
-            var i = 0;
-            foreach (var coord in walkableSquares)
+            int randomNumber = Yupi.GetRandomNumber(0, walkableSquares.Count);
+            int i = 0;
+            foreach (Point coord in walkableSquares)
             {
                 if (i == randomNumber)
                     return coord;
@@ -1028,12 +1026,12 @@ namespace Yupi.Game.Rooms.User.Path
         {
             if (user == null)
                 return false;
-            var square = new Point(to.X, to.Y);
+            Point square = new Point(to.X, to.Y);
             if (user.IsBot == false && user.GetClient() != null)
             {
                 if (GuildGates.ContainsKey(square))
                 {
-                    var guildId = GuildGates[square].GroupId;
+                    uint guildId = GuildGates[square].GroupId;
                     if (guildId > 0 &&
                         user.GetClient()
                             .GetHabbo()
@@ -1048,7 +1046,7 @@ namespace Yupi.Game.Rooms.User.Path
             if (GameMap[to.X, to.Y] == 3 && !endOfPath || GameMap[to.X, to.Y] == 0 ||
                 GameMap[to.X, to.Y] == 2 && !endOfPath)
                 return false;
-            var userForSquare = _room.GetRoomUserManager().GetUserForSquare(to.X, to.Y);
+            RoomUser userForSquare = _room.GetRoomUserManager().GetUserForSquare(to.X, to.Y);
             if (userForSquare != null && endOfPath && !_room.RoomData.AllowWalkThrough)
             {
                 user.HasPathBlocked = true;
@@ -1058,10 +1056,10 @@ namespace Yupi.Game.Rooms.User.Path
                 _room.GetRoomUserManager().UpdateUserStatus(user, false);
                 if (!user.RidingHorse || user.IsPet || user.IsBot)
                     return true;
-                var roomUserByVirtualId =
+                RoomUser roomUserByVirtualId =
                     _room.GetRoomUserManager().GetRoomUserByVirtualId(Convert.ToInt32(user.HorseId));
 
-                var message = new ServerMessage(LibraryParser.OutgoingRequest("UpdateUserStatusMessageComposer"));
+                ServerMessage message = new ServerMessage(LibraryParser.OutgoingRequest("UpdateUserStatusMessageComposer"));
                 message.AppendInteger(1);
                 if (roomUserByVirtualId != null)
                 {
@@ -1090,7 +1088,7 @@ namespace Yupi.Game.Rooms.User.Path
             bool result;
             try
             {
-                result = (Model.SqState[x][y] == SquareState.Open);
+                result = Model.SqState[x][y] == SquareState.Open;
             }
             catch
             {
@@ -1107,7 +1105,7 @@ namespace Yupi.Game.Rooms.User.Path
         /// <returns><c>true</c> if XXXX, <c>false</c> otherwise.</returns>
         internal bool ItemCanBePlacedHere(int x, int y)
         {
-            return (Model.MapSizeX - 1 >= x && Model.MapSizeY - 1 >= y) && (x != Model.DoorX || y != Model.DoorY) &&
+            return Model.MapSizeX - 1 >= x && Model.MapSizeY - 1 >= y && (x != Model.DoorX || y != Model.DoorY) &&
                    GameMap[x, y] == 1;
         }
 
@@ -1127,18 +1125,17 @@ namespace Yupi.Game.Rooms.User.Path
                 if (x >= Model.MapSizeX || y >= Model.MapSizeY)
                     return 0.0;
 
-                var point = CoordinatesFormatter.CombineXyCoord(x, y);
+                int point = CoordinatesFormatter.CombineXyCoord(x, y);
                 if (CoordinatedItems.Contains(point))
                 {
-                    var itemsOnSquare = (List<RoomItem>) CoordinatedItems[point];
+                    List<RoomItem> itemsOnSquare = (List<RoomItem>) CoordinatedItems[point];
                     return SqAbsoluteHeight(x, y, itemsOnSquare);
                 }
                 return Model.SqFloorHeight[x][y];
             }
             catch (Exception ex)
             {
-                ServerLogManager.LogException("Exception RoomData Loading on (SqAbsoluteHeight): " + ex);
-                ServerLogManager.HandleException(ex, "Yupi.HabboHotel.Rooms.Gamemap");
+                ServerLogManager.LogException(ex, "Yupi.Game.Rooms.User.Path.Gamemap.SqAbsoluteHeight");
                 return 0.0;
             }
         }
@@ -1155,12 +1152,12 @@ namespace Yupi.Game.Rooms.User.Path
             try
             {
                 double[] highestStack = {Model.SqFloorHeight[x][y]};
-                var deductable = 0.0;
+                double deductable = 0.0;
 
                 foreach (
-                    var item in
+                    RoomItem item in
                         itemsOnSquare.Where(
-                            item => (item?.GetBaseItem() != null && item.TotalHeight > highestStack[0])))
+                            item => item?.GetBaseItem() != null && item.TotalHeight > highestStack[0]))
                 {
                     if (item.GetBaseItem().IsSeat || item.GetBaseItem().InteractionType == Interaction.Bed)
                         deductable = item.GetBaseItem().Height;
@@ -1172,7 +1169,7 @@ namespace Yupi.Game.Rooms.User.Path
             }
             catch (Exception e)
             {
-                ServerLogManager.HandleException(e, "Room.SqAbsoluteHeight");
+                ServerLogManager.LogException(e, "Yupi.Game.Rooms.User.Path.GameMap.SqAbsoluteHeight");
                 return 0.0;
             }
         }
@@ -1196,12 +1193,12 @@ namespace Yupi.Game.Rooms.User.Path
         /// <returns>List&lt;RoomItem&gt;.</returns>
         internal List<RoomItem> GetRoomItemForSquare(int x, int y)
         {
-            var point = CoordinatesFormatter.CombineXyCoord(x, y);
-            var list = new List<RoomItem>();
+            int point = CoordinatesFormatter.CombineXyCoord(x, y);
+            List<RoomItem> list = new List<RoomItem>();
             if (!CoordinatedItems.Contains(point))
                 return list;
 
-            var list2 = (List<RoomItem>) CoordinatedItems[point];
+            List<RoomItem> list2 = (List<RoomItem>) CoordinatedItems[point];
             list.AddRange(list2.Where(current => current.Coordinate.X == x && current.Coordinate.Y == y));
             return list;
         }
@@ -1215,11 +1212,11 @@ namespace Yupi.Game.Rooms.User.Path
         /// <returns><c>true</c> if XXXX, <c>false</c> otherwise.</returns>
         internal bool SquareHasFurni(int x, int y, Interaction type)
         {
-            var point = CoordinatesFormatter.CombineXyCoord(x, y);
+            int point = CoordinatesFormatter.CombineXyCoord(x, y);
             if (!CoordinatedItems.Contains(point))
                 return false;
 
-            var list = (List<RoomItem>) CoordinatedItems[point];
+            List<RoomItem> list = (List<RoomItem>) CoordinatedItems[point];
             return
                 list.Any(
                     item =>
@@ -1235,11 +1232,11 @@ namespace Yupi.Game.Rooms.User.Path
         /// <returns><c>true</c> if XXXX, <c>false</c> otherwise.</returns>
         internal bool SquareHasFurni(int x, int y)
         {
-            var point = CoordinatesFormatter.CombineXyCoord(x, y);
+            int point = CoordinatesFormatter.CombineXyCoord(x, y);
             if (!CoordinatedItems.Contains(point))
                 return false;
 
-            var list = (List<RoomItem>) CoordinatedItems[point];
+            List<RoomItem> list = (List<RoomItem>) CoordinatedItems[point];
             return list.Any(item => item.Coordinate.X == x && item.Coordinate.Y == y);
         }
 
@@ -1251,12 +1248,12 @@ namespace Yupi.Game.Rooms.User.Path
         /// <returns>List&lt;RoomItem&gt;.</returns>
         internal List<RoomItem> GetAllRoomItemForSquare(int pX, int pY)
         {
-            var point = CoordinatesFormatter.CombineXyCoord(pX, pY);
-            var list = new List<RoomItem>();
+            int point = CoordinatesFormatter.CombineXyCoord(pX, pY);
+            List<RoomItem> list = new List<RoomItem>();
             if (!CoordinatedItems.Contains(point))
                 return list;
-            var list2 = (List<RoomItem>) CoordinatedItems[point];
-            foreach (var current in list2.Where(current => !list.Contains(current)))
+            List<RoomItem> list2 = (List<RoomItem>) CoordinatedItems[point];
+            foreach (RoomItem current in list2.Where(current => !list.Contains(current)))
                 list.Add(current);
             return list;
         }
@@ -1304,9 +1301,9 @@ namespace Yupi.Game.Rooms.User.Path
         internal RoomItem GetHighestItemForSquare(int x, int y, out double z, RoomItem exception = null)
         {
             RoomItem roomItem = null;
-            var num = -1.0;
-            var num2 = 0.0;
-            foreach (var current in GetRoomItemForSquare(x, y))
+            double num = -1.0;
+            double num2 = 0.0;
+            foreach (RoomItem current in GetRoomItemForSquare(x, y))
             {
                 if (current.Z > num)
                 {
@@ -1366,7 +1363,7 @@ namespace Yupi.Game.Rooms.User.Path
             }
             catch (Exception e)
             {
-                Writer.LogException(e.ToString());
+                ServerLogManager.LogException(e.ToString());
             }
         }
 
@@ -1376,11 +1373,11 @@ namespace Yupi.Game.Rooms.User.Path
         /// <returns>HashSet&lt;Point&gt;.</returns>
         private HashSet<Point> GetWalkablePoints()
         {
-            var list = new HashSet<Point>();
+            HashSet<Point> list = new HashSet<Point>();
 
             {
-                for (var i = 0; i < GameMap.GetUpperBound(1) - 1; i++)
-                    for (var j = 0; j < GameMap.GetUpperBound(0) - 1; j++)
+                for (int i = 0; i < GameMap.GetUpperBound(1) - 1; i++)
+                    for (int j = 0; j < GameMap.GetUpperBound(0) - 1; j++)
                         if (StaticModel.DoorX != j && StaticModel.DoorY != i && GameMap[j, i] == 0)
                             list.Add(new Point(j, i));
                 return list;
@@ -1423,7 +1420,7 @@ namespace Yupi.Game.Rooms.User.Path
                     try
                     {
                         EffectMap[coord.X, coord.Y] = 0;
-                        var interactionType = item.GetBaseItem().InteractionType;
+                        Interaction interactionType = item.GetBaseItem().InteractionType;
                         if (interactionType != Interaction.Pool)
                             switch (interactionType)
                             {
@@ -1451,7 +1448,7 @@ namespace Yupi.Game.Rooms.User.Path
                     }
                     catch (Exception e)
                     {
-                        Writer.LogException(e.ToString());
+                        ServerLogManager.LogException(e.ToString());
                     }
 
                     if (item.GetBaseItem().Walkable)
@@ -1484,10 +1481,9 @@ namespace Yupi.Game.Rooms.User.Path
             }
             catch (Exception ex)
             {
-                ServerLogManager.LogException(string.Concat("Error during map generation for room ", _room.RoomId,
-                    ". Exception: ", ex.ToString()));
-                ServerLogManager.HandleException(ex, "Yupi.HabboHotel.Rooms.Gamemap");
+                ServerLogManager.LogException(ex, "Yupi.Game.Rooms.User.Path.GameMap.ConstructMapForItem");
             }
+
             return true;
         }
 
@@ -1517,7 +1513,7 @@ namespace Yupi.Game.Rooms.User.Path
                     break;
 
                 case Interaction.FreezeExit:
-                    var exitTeleport = _room.GetFreeze().ExitTeleport;
+                    RoomItem exitTeleport = _room.GetFreeze().ExitTeleport;
                     if (exitTeleport == null || (int) item.Id != (int) exitTeleport.Id)
                         break;
                     _room.GetFreeze().ExitTeleport = null;
@@ -1585,13 +1581,13 @@ namespace Yupi.Game.Rooms.User.Path
         /// <returns>ServerMessage.</returns>
         private ServerMessage NewHeightMap()
         {
-            var serverMessage = new ServerMessage();
+            ServerMessage serverMessage = new ServerMessage();
             serverMessage.Init(LibraryParser.OutgoingRequest("HeightMapMessageComposer"));
             serverMessage.AppendInteger(Model.MapSizeX);
             serverMessage.AppendInteger(Model.MapSizeX*Model.MapSizeY);
-            for (var i = 0; i < Model.MapSizeY; i++)
+            for (int i = 0; i < Model.MapSizeY; i++)
             {
-                for (var j = 0; j < Model.MapSizeX; j++)
+                for (int j = 0; j < Model.MapSizeX; j++)
                 {
                     serverMessage.AppendShort((short) (SqAbsoluteHeight(j, i)*256));
                 }
@@ -1604,7 +1600,7 @@ namespace Yupi.Game.Rooms.User.Path
         {
             bool moveToLeft = true, moveToRight = true, moveToUp = true, moveToDown = true;
 
-            for (var i = 1; i < 4; i++)
+            for (int i = 1; i < 4; i++)
             {
                 // Left
                 if (i == 1 && !IsValidValueItem(x - i, y))
@@ -1635,7 +1631,7 @@ namespace Yupi.Game.Rooms.User.Path
                     return MovementState.None;
             }
 
-            var movements = new List<MovementState>();
+            List<MovementState> movements = new List<MovementState>();
             if (moveToLeft)
                 movements.Add(MovementState.Left);
             if (moveToRight)

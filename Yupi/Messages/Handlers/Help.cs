@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Globalization;
+using Yupi.Game.GameClients.Interfaces;
 using Yupi.Game.Rooms;
 using Yupi.Game.Rooms.Data;
 using Yupi.Game.Support;
@@ -8,12 +9,12 @@ using Yupi.Messages.Parsers;
 namespace Yupi.Messages.Handlers
 {
     /// <summary>
-    /// Class GameClientMessageHandler.
+    ///     Class GameClientMessageHandler.
     /// </summary>
-    partial class GameClientMessageHandler
+    internal partial class GameClientMessageHandler
     {
         /// <summary>
-        /// Initializes the help tool.
+        ///     Initializes the help tool.
         /// </summary>
         internal void InitHelpTool()
         {
@@ -40,7 +41,7 @@ namespace Yupi.Messages.Handlers
         }
 
         /// <summary>
-        /// Submits the help ticket.
+        ///     Submits the help ticket.
         /// </summary>
         internal void SubmitHelpTicket()
         {
@@ -75,7 +76,8 @@ namespace Yupi.Messages.Handlers
                 return;
             }
 
-            if (Yupi.GetGame().GetModerationTool().UsersHasAbusiveCooldown(Session.GetHabbo().Id)) // the previous issue of the user was abusive
+            if (Yupi.GetGame().GetModerationTool().UsersHasAbusiveCooldown(Session.GetHabbo().Id))
+                // the previous issue of the user was abusive
             {
                 Response.AppendInteger(2);
                 SendResponse();
@@ -90,7 +92,7 @@ namespace Yupi.Messages.Handlers
         }
 
         /// <summary>
-        /// Deletes the pending CFH.
+        ///     Deletes the pending CFH.
         /// </summary>
         internal void DeletePendingCfh()
         {
@@ -105,13 +107,13 @@ namespace Yupi.Messages.Handlers
         }
 
         /// <summary>
-        /// Mods the get user information.
+        ///     Mods the get user information.
         /// </summary>
         internal void ModGetUserInfo()
         {
             if (Session.GetHabbo().HasFuse("fuse_mod"))
             {
-                var num = Request.GetUInteger();
+                uint num = Request.GetUInteger();
 
                 if (Yupi.GetGame().GetClientManager().GetNameById(num) != "Unknown User")
                     Session.SendMessage(ModerationTool.SerializeUserInfo(num));
@@ -121,7 +123,7 @@ namespace Yupi.Messages.Handlers
         }
 
         /// <summary>
-        /// Mods the get user chatlog.
+        ///     Mods the get user chatlog.
         /// </summary>
         internal void ModGetUserChatlog()
         {
@@ -132,7 +134,7 @@ namespace Yupi.Messages.Handlers
         }
 
         /// <summary>
-        /// Mods the get room chatlog.
+        ///     Mods the get room chatlog.
         /// </summary>
         internal void ModGetRoomChatlog()
         {
@@ -143,28 +145,28 @@ namespace Yupi.Messages.Handlers
             }
 
             Request.GetInteger();
-            var roomId = Request.GetUInteger();
+            uint roomId = Request.GetUInteger();
 
             if (Yupi.GetGame().GetRoomManager().GetRoom(roomId) != null)
                 Session.SendMessage(ModerationTool.SerializeRoomChatlog(roomId));
         }
 
         /// <summary>
-        /// Mods the get room tool.
+        ///     Mods the get room tool.
         /// </summary>
         internal void ModGetRoomTool()
         {
             if (!Session.GetHabbo().HasFuse("fuse_mod"))
                 return;
 
-            var roomId = Request.GetUInteger();
-            var data = Yupi.GetGame().GetRoomManager().GenerateNullableRoomData(roomId);
+            uint roomId = Request.GetUInteger();
+            RoomData data = Yupi.GetGame().GetRoomManager().GenerateNullableRoomData(roomId);
 
             Session.SendMessage(ModerationTool.SerializeRoomTool(data));
         }
 
         /// <summary>
-        /// Mods the pick ticket.
+        ///     Mods the pick ticket.
         /// </summary>
         internal void ModPickTicket()
         {
@@ -172,14 +174,14 @@ namespace Yupi.Messages.Handlers
                 return;
 
             Request.GetInteger();
-            var ticketId = Request.GetUInteger();
+            uint ticketId = Request.GetUInteger();
 
             Yupi.GetGame().GetModerationTool().PickTicket(Session, ticketId);
         }
 
-        ///<summary>
-        ///Mods the release ticket.
-        ///</summary>
+        /// <summary>
+        ///     Mods the release ticket.
+        /// </summary>
         internal void ModReleaseTicket()
         {
             if (!Session.GetHabbo().HasFuse("fuse_mod"))
@@ -192,7 +194,7 @@ namespace Yupi.Messages.Handlers
         }
 
         /// <summary>
-        /// Mods the close ticket.
+        ///     Mods the close ticket.
         /// </summary>
         internal void ModCloseTicket()
         {
@@ -212,7 +214,7 @@ namespace Yupi.Messages.Handlers
         }
 
         /// <summary>
-        /// Mods the get ticket chatlog.
+        ///     Mods the get ticket chatlog.
         /// </summary>
         internal void ModGetTicketChatlog()
         {
@@ -233,7 +235,7 @@ namespace Yupi.Messages.Handlers
         }
 
         /// <summary>
-        /// Mods the get room visits.
+        ///     Mods the get room visits.
         /// </summary>
         internal void ModGetRoomVisits()
         {
@@ -247,7 +249,7 @@ namespace Yupi.Messages.Handlers
         }
 
         /// <summary>
-        /// Mods the send room alert.
+        ///     Mods the send room alert.
         /// </summary>
         internal void ModSendRoomAlert()
         {
@@ -274,7 +276,7 @@ namespace Yupi.Messages.Handlers
         }
 
         /// <summary>
-        /// Mods the perform room action.
+        ///     Mods the perform room action.
         /// </summary>
         internal void ModPerformRoomAction()
         {
@@ -290,89 +292,89 @@ namespace Yupi.Messages.Handlers
         }
 
         /// <summary>
-        /// Mods the send user caution.
+        ///     Mods the send user caution.
         /// </summary>
         internal void ModSendUserCaution()
         {
             if (!Session.GetHabbo().HasFuse("fuse_alert"))
                 return;
 
-            var userId = Request.GetUInteger();
-            var message = Request.GetString();
+            uint userId = Request.GetUInteger();
+            string message = Request.GetString();
 
             ModerationTool.AlertUser(Session, userId, message, true);
         }
 
         /// <summary>
-        /// Mods the send user message.
+        ///     Mods the send user message.
         /// </summary>
         internal void ModSendUserMessage()
         {
             if (!Session.GetHabbo().HasFuse("fuse_alert"))
                 return;
 
-            var userId = Request.GetUInteger();
-            var message = Request.GetString();
+            uint userId = Request.GetUInteger();
+            string message = Request.GetString();
 
             ModerationTool.AlertUser(Session, userId, message, false);
         }
 
         /// <summary>
-        /// Mods the mute user.
+        ///     Mods the mute user.
         /// </summary>
         internal void ModMuteUser()
         {
             if (!Session.GetHabbo().HasFuse("fuse_mute"))
                 return;
 
-            var userId = Request.GetUInteger();
-            var message = Request.GetString();
-            var clientByUserId = Yupi.GetGame().GetClientManager().GetClientByUserId(userId);
+            uint userId = Request.GetUInteger();
+            string message = Request.GetString();
+            GameClient clientByUserId = Yupi.GetGame().GetClientManager().GetClientByUserId(userId);
 
             clientByUserId.GetHabbo().Mute();
             clientByUserId.SendNotif(message);
         }
 
         /// <summary>
-        /// Mods the lock trade.
+        ///     Mods the lock trade.
         /// </summary>
         internal void ModLockTrade()
         {
             if (!Session.GetHabbo().HasFuse("fuse_lock_trade"))
                 return;
 
-            var userId = Request.GetUInteger();
-            var message = Request.GetString();
-            var length = (Request.GetInteger() * 3600);
+            uint userId = Request.GetUInteger();
+            string message = Request.GetString();
+            int length = Request.GetInteger()*3600;
 
             ModerationTool.LockTrade(Session, userId, message, length);
         }
 
         /// <summary>
-        /// Mods the kick user.
+        ///     Mods the kick user.
         /// </summary>
         internal void ModKickUser()
         {
             if (!Session.GetHabbo().HasFuse("fuse_kick"))
                 return;
 
-            var userId = Request.GetUInteger();
-            var message = Request.GetString();
+            uint userId = Request.GetUInteger();
+            string message = Request.GetString();
 
             ModerationTool.KickUser(Session, userId, message, false);
         }
 
         /// <summary>
-        /// Mods the ban user.
+        ///     Mods the ban user.
         /// </summary>
         internal void ModBanUser()
         {
             if (!Session.GetHabbo().HasFuse("fuse_ban"))
                 return;
 
-            var userId = Request.GetUInteger();
-            var message = Request.GetString();
-            var length = (Request.GetInteger() * 3600);
+            uint userId = Request.GetUInteger();
+            string message = Request.GetString();
+            int length = Request.GetInteger()*3600;
 
             ModerationTool.BanUser(Session, userId, length, message);
         }

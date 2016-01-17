@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using Yupi.Game.GameClients.Interfaces;
 using Yupi.Game.Rooms;
+using Yupi.Game.Users.Relationships;
 using Yupi.Messages;
 
 namespace Yupi.Game.Users.Messenger.Structs
@@ -51,7 +52,8 @@ namespace Yupi.Game.Users.Messenger.Structs
         /// <param name="motto">The motto.</param>
         /// <param name="appearOffline">if set to <c>true</c> [appear offline].</param>
         /// <param name="hideInroom">if set to <c>true</c> [hide inroom].</param>
-        internal MessengerBuddy(uint userId, string userName, string look, string motto, bool appearOffline, bool hideInroom)
+        internal MessengerBuddy(uint userId, string userName, string look, string motto, bool appearOffline,
+            bool hideInroom)
         {
             Id = userId;
             UserName = userName;
@@ -71,7 +73,10 @@ namespace Yupi.Game.Users.Messenger.Structs
         ///     Gets a value indicating whether this instance is online.
         /// </summary>
         /// <value><c>true</c> if this instance is online; otherwise, <c>false</c>.</value>
-        internal bool IsOnline => Client?.GetHabbo() != null && Client.GetHabbo().GetMessenger() != null && !Client.GetHabbo().GetMessenger().AppearOffline;
+        internal bool IsOnline
+            =>
+                Client?.GetHabbo() != null && Client.GetHabbo().GetMessenger() != null &&
+                !Client.GetHabbo().GetMessenger().AppearOffline;
 
         /// <summary>
         ///     Gets a value indicating whether [in room].
@@ -107,9 +112,10 @@ namespace Yupi.Game.Users.Messenger.Structs
         /// <param name="session">The session.</param>
         internal void Serialize(ServerMessage message, GameClient session)
         {
-            var value = session.GetHabbo().Relationships.FirstOrDefault(x => x.Value.UserId == Convert.ToInt32(Id)).Value;
+            Relationship value =
+                session.GetHabbo().Relationships.FirstOrDefault(x => x.Value.UserId == Convert.ToInt32(Id)).Value;
 
-            var i = value?.Type ?? 0;
+            int i = value?.Type ?? 0;
 
             message.AppendInteger(Id);
             message.AppendString(UserName);

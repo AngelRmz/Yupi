@@ -8,7 +8,6 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Timers;
-using System.Windows.Forms;
 using MySql.Data.MySqlClient;
 using Yupi.Core.Encryption;
 using Yupi.Core.Io;
@@ -17,10 +16,11 @@ using Yupi.Core.Settings;
 using Yupi.Core.Util.Math;
 using Yupi.Data;
 using Yupi.Data.Base;
+using Yupi.Data.Base.Adapters.Interfaces;
+using Yupi.Data.Base.Managers;
 using Yupi.Data.Interfaces;
-using Yupi.Data.Structs;
 using Yupi.Game.GameClients.Interfaces;
-using Yupi.Game.Groups.Interfaces;
+using Yupi.Game.Groups.Structs;
 using Yupi.Game.Pets;
 using Yupi.Game.Users;
 using Yupi.Game.Users.Data.Models;
@@ -34,129 +34,132 @@ using Yupi.Net.Connection;
 namespace Yupi
 {
     /// <summary>
-    /// Class Azure.
+    ///     Class Yupi.
     /// </summary>
     public static class Yupi
     {
         /// <summary>
-        /// Yupi Environment: Main Thread of Yupi Emulator, SetUp's the Emulator
-        /// Contains Initialize: Responsible of the Emulator Loadings
+        ///     Yupi Environment: Main Thread of Yupi Emulator, SetUp's the Emulator
+        ///     Contains Initialize: Responsible of the Emulator Loadings
         /// </summary>
-
-        internal static string DatabaseConnectionType = "MySQL", ServerLanguage = "english";
+        internal static string ServerLanguage = "english";
 
         /// <summary>
-        /// The build of the server
+        ///     The build of the server
         /// </summary>
-        internal static readonly string Build = "100", Version = "2.0";
+        internal static readonly string Build = "200", Version = "1.0";
 
         /// <summary>
-        /// The live currency type
+        ///     The live currency type
         /// </summary>
         internal static int LiveCurrencyType = 105, ConsoleTimer = 2000;
 
         /// <summary>
-        /// The is live
+        ///     The is live
         /// </summary>
-        internal static bool IsLive, SeparatedTasksInGameClientManager, SeparatedTasksInMainLoops, DebugMode, ConsoleTimerOn;
+        internal static bool IsLive,
+            SeparatedTasksInGameClientManager,
+            SeparatedTasksInMainLoops,
+            PacketDebugMode,
+            ConsoleTimerOn;
 
         /// <summary>
-        /// The staff alert minimum rank
+        ///     The staff alert minimum rank
         /// </summary>
         internal static uint StaffAlertMinRank = 4, FriendRequestLimit = 1000;
 
         /// <summary>
-        /// Bobba Filter Muted Users by Filter
+        ///     Bobba Filter Muted Users by Filter
         /// </summary>
         internal static Dictionary<uint, uint> MutedUsersByFilter;
 
         /// <summary>
-        /// The manager
+        ///     The manager
         /// </summary>
         internal static DatabaseManager Manager;
 
         /// <summary>
-        /// The configuration data
+        ///     The configuration data
         /// </summary>
         internal static ServerDatabaseSettings ConfigData;
 
         /// <summary>
-        /// The server started
+        ///     The server started
         /// </summary>
         internal static DateTime ServerStarted;
 
         /// <summary>
-        /// The offline messages
+        ///     The offline messages
         /// </summary>
         internal static Dictionary<uint, List<OfflineMessage>> OfflineMessages;
 
         /// <summary>
-        /// The timer
+        ///     The timer
         /// </summary>
-        internal static System.Timers.Timer Timer;
+        internal static Timer Timer;
 
         /// <summary>
-        /// The culture information
+        ///     The culture information
         /// </summary>
         internal static CultureInfo CultureInfo;
 
         /// <summary>
-        /// The _plugins
+        ///     The _plugins
         /// </summary>
         public static Dictionary<string, IPlugin> Plugins;
 
         /// <summary>
-        /// The users cached
+        ///     The users cached
         /// </summary>
         public static readonly ConcurrentDictionary<uint, Habbo> UsersCached = new ConcurrentDictionary<uint, Habbo>();
 
         /// <summary>
-        /// The _connection manager
+        ///     The _connection manager
         /// </summary>
         private static ConnectionHandler _connectionManager;
 
         /// <summary>
-        /// The _default encoding
+        ///     The _default encoding
         /// </summary>
         private static Encoding _defaultEncoding;
 
         /// <summary>
-        /// The _game
+        ///     The _game
         /// </summary>
         private static Game.Game _game;
 
         /// <summary>
-        /// The _languages
+        ///     The _languages
         /// </summary>
         private static ServerLanguageSettings _languages;
 
         /// <summary>
-        /// The allowed special chars
+        ///     The allowed special chars
         /// </summary>
         private static readonly HashSet<char> AllowedSpecialChars = new HashSet<char>(new[]
         {
             '-', '.', ' ', 'Ã', '©', '¡', '­', 'º', '³', 'Ã', '‰', '_'
         });
 
+        internal static string YupiVariablesDirectory = string.Empty;
+
+        internal static string YupiRootDirectory = string.Empty;
+
         /// <summary>
-        /// Check's if the Shutdown Has Started
+        ///     Check's if the Shutdown Has Started
         /// </summary>
         /// <value><c>true</c> if [shutdown started]; otherwise, <c>false</c>.</value>
         internal static bool ShutdownStarted { get; set; }
 
         public static bool ContainsAny(this string haystack, params string[] needles) => needles.Any(haystack.Contains);
 
-        internal static string YupiVariablesDirectory = string.Empty;
-
-        internal static string YupiRootDirectory = string.Empty;
-
         /// <summary>
-        /// Start the Plugin System
+        ///     Start the Plugin System
         /// </summary>
         /// <returns>ICollection&lt;IPlugin&gt;.</returns>
         public static ICollection<IPlugin> LoadPlugins()
         {
-            string path = Application.StartupPath + "Plugins";
+            string path = Path.Combine(YupiVariablesDirectory, "Plugins");
 
             if (!Directory.Exists(path))
                 return null;
@@ -172,78 +175,78 @@ namespace Yupi
                     .Where(assembly => assembly != null)
                     .ToList();
 
-            Type pluginType = typeof(IPlugin);
-            var pluginTypes = new List<Type>();
+            Type pluginType = typeof (IPlugin);
 
-            foreach (var types in from assembly in assemblies where assembly != null select assembly.GetTypes())
-                pluginTypes.AddRange(types.Where(type => type != null && !type.IsInterface && !type.IsAbstract).Where(type => type.GetInterface(pluginType.FullName) != null));
+            List<Type> pluginTypes = new List<Type>();
 
-            var plugins = new List<IPlugin>(pluginTypes.Count);
+            foreach (Type[] types in from assembly in assemblies where assembly != null select assembly.GetTypes())
+                pluginTypes.AddRange(
+                    types.Where(type => type != null && !type.IsInterface && !type.IsAbstract)
+                        .Where(type => type.GetInterface(pluginType.FullName) != null));
 
-            plugins.AddRange(pluginTypes.Select(type => (IPlugin)Activator.CreateInstance(type)).Where(plugin => plugin != null));
+            List<IPlugin> plugins = new List<IPlugin>(pluginTypes.Count);
+
+            plugins.AddRange(
+                pluginTypes.Select(type => (IPlugin) Activator.CreateInstance(type)).Where(plugin => plugin != null));
 
             return plugins;
         }
 
         /// <summary>
-        /// Get's Habbo By The User Id
+        ///     Get's Habbo By The User Id
         /// </summary>
         /// <param name="userId">The user identifier.</param>
         /// <returns>Habbo.</returns>
         /// Table: users.id
         internal static Habbo GetHabboById(uint userId)
         {
-            try
+            GameClient clientByUserId = GetGame().GetClientManager().GetClientByUserId(userId);
+
+            if (clientByUserId != null)
             {
-                GameClient clientByUserId = GetGame().GetClientManager().GetClientByUserId(userId);
+                Habbo habbo = clientByUserId.GetHabbo();
 
-                if (clientByUserId != null)
+                if (habbo != null && habbo.Id > 0)
                 {
-                    Habbo habbo = clientByUserId.GetHabbo();
+                    UsersCached.AddOrUpdate(userId, habbo, (key, value) => habbo);
 
-                    if (habbo != null && habbo.Id > 0)
-                    {
-                        UsersCached.AddOrUpdate(userId, habbo, (key, value) => habbo);
-                        return habbo;
-                    }
-                }
-                else
-                {
-                    if (UsersCached.ContainsKey(userId))
-                        return UsersCached[userId];
-
-                    UserData userData = UserDataFactory.GetUserData((int)userId);
-
-                    if (UsersCached.ContainsKey(userId))
-                        return UsersCached[userId];
-
-                    if (userData?.User == null)
-                        return null;
-
-                    UsersCached.TryAdd(userId, userData.User);
-                    userData.User.InitInformation(userData);
-
-                    return userData.User;
+                    return habbo;
                 }
             }
-            catch (Exception e)
+            else
             {
-                Writer.LogException("Habbo GetHabboForId: " + e);
+                if (UsersCached.ContainsKey(userId))
+                    return UsersCached[userId];
+
+                UserData userData = UserDataFactory.GetUserData((int) userId);
+
+                if (UsersCached.ContainsKey(userId))
+                    return UsersCached[userId];
+
+                if (userData?.User == null)
+                    return null;
+
+                UsersCached.TryAdd(userId, userData.User);
+                userData.User.InitInformation(userData);
+
+                return userData.User;
             }
+
             return null;
         }
 
         /// <summary>
-        /// Console Clear Thread
+        ///     Console Clear Thread
         /// </summary>
         /// <param name="sender">The sender.</param>
-        /// <param name="e">The <see cref="ElapsedEventArgs"/> instance containing the event data.</param>
+        /// <param name="e">The <see cref="ElapsedEventArgs" /> instance containing the event data.</param>
         internal static void TimerElapsed(object sender, ElapsedEventArgs e)
         {
             Console.Clear();
             Console.WriteLine();
 
-            Writer.WriteLine($"Console Cleared in: {DateTime.Now} Next Time on: {ConsoleTimer} Seconds ", "Yupi.Boot", ConsoleColor.DarkGreen);
+            Writer.WriteLine($"Console Cleared in: {DateTime.Now} Next Time on: {ConsoleTimer} Seconds ", "Yupi.Boot",
+                ConsoleColor.DarkGreen);
 
             Console.WriteLine();
             GC.Collect();
@@ -252,14 +255,16 @@ namespace Yupi
         }
 
         /// <summary>
-        /// Main Void, Initializes the Emulator.
+        ///     Main Void, Initializes the Emulator.
         /// </summary>
         internal static void Initialize()
         {
-            Console.Title = "Yupi Emulator | Loading [...]";
+            Console.Title = "Yupi Emulator | Starting [...]";
+
             ServerStarted = DateTime.Now;
             _defaultEncoding = Encoding.Default;
             MutedUsersByFilter = new Dictionary<uint, uint>();
+
             ChatEmotions.Initialize();
 
             CultureInfo = CultureInfo.CreateSpecificCulture("en-GB");
@@ -271,45 +276,49 @@ namespace Yupi
             try
             {
                 ServerConfigurationSettings.Load(Path.Combine(YupiVariablesDirectory, "Settings/main.ini"));
-                ServerConfigurationSettings.Load(Path.Combine(YupiVariablesDirectory, "Settings/Welcome/settings.ini"), true);
+                ServerConfigurationSettings.Load(Path.Combine(YupiVariablesDirectory, "Settings/Welcome/settings.ini"),
+                    true);
 
-                DatabaseConnectionType = ServerConfigurationSettings.Data["db.type"];
-
-                var mySqlConnectionStringBuilder = new MySqlConnectionStringBuilder
+                MySqlConnectionStringBuilder mySqlConnectionStringBuilder = new MySqlConnectionStringBuilder
                 {
-                    Server = (ServerConfigurationSettings.Data["db.hostname"]),
-                    Port = (uint.Parse(ServerConfigurationSettings.Data["db.port"])),
-                    UserID = (ServerConfigurationSettings.Data["db.username"]),
-                    Password = (ServerConfigurationSettings.Data["db.password"]),
-                    Database = (ServerConfigurationSettings.Data["db.name"]),
-                    MinimumPoolSize = (uint.Parse(ServerConfigurationSettings.Data["db.pool.minsize"])),
-                    MaximumPoolSize = (uint.Parse(ServerConfigurationSettings.Data["db.pool.maxsize"])),
-                    Pooling = (true),
-                    AllowZeroDateTime = (true),
-                    ConvertZeroDateTime = (true),
-                    DefaultCommandTimeout = (300u),
-                    ConnectionTimeout = (10u)
+                    Server = ServerConfigurationSettings.Data["db.hostname"],
+                    Port = uint.Parse(ServerConfigurationSettings.Data["db.port"]),
+                    UserID = ServerConfigurationSettings.Data["db.username"],
+                    Password = ServerConfigurationSettings.Data["db.password"],
+                    Database = ServerConfigurationSettings.Data["db.name"],
+                    MinimumPoolSize = uint.Parse(ServerConfigurationSettings.Data["db.pool.minsize"]),
+                    MaximumPoolSize = uint.Parse(ServerConfigurationSettings.Data["db.pool.maxsize"]),
+                    Pooling = true,
+                    AllowZeroDateTime = true,
+                    ConvertZeroDateTime = true,
+                    DefaultCommandTimeout = 300u,
+                    ConnectionTimeout = 10u
                 };
 
-                Manager = new DatabaseManager(mySqlConnectionStringBuilder.ToString(), DatabaseConnectionType);
+                Manager = new DatabaseManager(mySqlConnectionStringBuilder.ToString());
 
-                using (var queryReactor = GetDatabaseManager().GetQueryReactor())
+                using (IQueryAdapter commitableQueryReactor = GetDatabaseManager().GetQueryReactor())
                 {
-                    ConfigData = new ServerDatabaseSettings(queryReactor);
-                    PetCommandHandler.Init(queryReactor);
-                    PetLocale.Init(queryReactor);
+                    ConfigData = new ServerDatabaseSettings(commitableQueryReactor);
+                    PetCommandHandler.Init(commitableQueryReactor);
+                    PetLocale.Init(commitableQueryReactor);
                     OfflineMessages = new Dictionary<uint, List<OfflineMessage>>();
-                    OfflineMessage.InitOfflineMessages(queryReactor);
+                    OfflineMessage.InitOfflineMessages(commitableQueryReactor);
                 }
 
-                ConsoleTimer = (int.Parse(ServerConfigurationSettings.Data["console.clear.time"]));
-                ConsoleTimerOn = (bool.Parse(ServerConfigurationSettings.Data["console.clear.enabled"]));
-                FriendRequestLimit = ((uint)int.Parse(ServerConfigurationSettings.Data["client.maxrequests"]));
+                ConsoleTimer = int.Parse(ServerConfigurationSettings.Data["console.clear.time"]);
+                ConsoleTimerOn = bool.Parse(ServerConfigurationSettings.Data["console.clear.enabled"]);
+                FriendRequestLimit = (uint) int.Parse(ServerConfigurationSettings.Data["client.maxrequests"]);
 
                 LibraryParser.Incoming = new Dictionary<int, LibraryParser.StaticRequestHandler>();
                 LibraryParser.Library = new Dictionary<string, string>();
                 LibraryParser.Outgoing = new Dictionary<string, int>();
                 LibraryParser.Config = new Dictionary<string, string>();
+
+                if (ServerConfigurationSettings.Data.ContainsKey("client.build"))
+                    LibraryParser.ReleaseName = ServerConfigurationSettings.Data["client.build"];
+                else
+                    throw new Exception("Unable to Continue if No Release is configured to the Emulator Handle.");
 
                 LibraryParser.RegisterLibrary();
                 LibraryParser.RegisterOutgoing();
@@ -322,11 +331,12 @@ namespace Yupi
 
                 if (plugins != null)
                 {
-                    foreach (var item in plugins.Where(item => item != null))
+                    foreach (IPlugin item in plugins.Where(item => item != null))
                     {
                         Plugins.Add(item.PluginName, item);
 
-                        Writer.WriteLine("Loaded Plugin: " + item.PluginName + " Version: " + item.PluginVersion, "Yupi.Plugins", ConsoleColor.DarkBlue);
+                        Writer.WriteLine("Loaded Plugin: " + item.PluginName + " Version: " + item.PluginVersion,
+                            "Yupi.Plugins", ConsoleColor.DarkBlue);
                     }
                 }
 
@@ -335,16 +345,21 @@ namespace Yupi
                 CrossDomainSettings.Set();
 
                 _game = new Game.Game(int.Parse(ServerConfigurationSettings.Data["game.tcp.conlimit"]));
+
                 _game.GetNavigator().LoadNewPublicRooms();
                 _game.ContinueLoading();
+
                 FurnitureDataManager.Clear();
 
-                ServerLanguage = (Convert.ToString(ServerConfigurationSettings.Data["system.lang"]));
+                if (ServerConfigurationSettings.Data.ContainsKey("server.lang"))
+                    ServerLanguage = Convert.ToString(ServerConfigurationSettings.Data["server.lang"]);
+
                 _languages = new ServerLanguageSettings(ServerLanguage);
+
                 Writer.WriteLine("Loaded " + _languages.Count() + " Languages Vars", "Yupi.Interpreters");
 
                 if (plugins != null)
-                    foreach (var itemTwo in plugins)
+                    foreach (IPlugin itemTwo in plugins)
                         itemTwo?.message_void();
 
                 if (ConsoleTimerOn)
@@ -352,17 +367,20 @@ namespace Yupi
 
                 ClientMessageFactory.Init();
 
-                Writer.WriteLine("Game server started at port " + int.Parse(ServerConfigurationSettings.Data["game.tcp.port"]), "Server.Game");
+                Writer.WriteLine(
+                    "Game server started at port " + int.Parse(ServerConfigurationSettings.Data["game.tcp.port"]),
+                    "Server.Game");
 
                 _connectionManager = new ConnectionHandler(int.Parse(ServerConfigurationSettings.Data["game.tcp.port"]),
-                   int.Parse(ServerConfigurationSettings.Data["game.tcp.conlimit"]),
-                   int.Parse(ServerConfigurationSettings.Data["game.tcp.conperip"]),
-                   ServerConfigurationSettings.Data["game.tcp.antiddos"].ToLower() == "true",
-                   ServerConfigurationSettings.Data["game.tcp.enablenagles"].ToLower() == "true");
+                    int.Parse(ServerConfigurationSettings.Data["game.tcp.conlimit"]),
+                    int.Parse(ServerConfigurationSettings.Data["game.tcp.conperip"]),
+                    ServerConfigurationSettings.Data["game.tcp.antiddos"].ToLower() == "true",
+                    ServerConfigurationSettings.Data["game.tcp.enablenagles"].ToLower() == "true");
 
                 if (LibraryParser.Config["Crypto.Enabled"] == "true")
                 {
-                    Handler.Initialize(LibraryParser.Config["Crypto.RSA.N"], LibraryParser.Config["Crypto.RSA.D"], LibraryParser.Config["Crypto.RSA.E"]);
+                    Handler.Initialize(LibraryParser.Config["Crypto.RSA.N"], LibraryParser.Config["Crypto.RSA.D"],
+                        LibraryParser.Config["Crypto.RSA.E"]);
 
                     Writer.WriteLine("Started RSA crypto service", "Yupi.Crypto");
                 }
@@ -373,23 +391,24 @@ namespace Yupi
 
                 if (ConsoleTimerOn)
                 {
-                    Timer = new System.Timers.Timer { Interval = ConsoleTimer };
+                    Timer = new Timer {Interval = ConsoleTimer};
                     Timer.Elapsed += TimerElapsed;
                     Timer.Start();
                 }
 
-                if (ServerConfigurationSettings.Data.ContainsKey("StaffAlert.MinRank"))
-                    StaffAlertMinRank = uint.Parse(ServerConfigurationSettings.Data["StaffAlert.MinRank"]);
+                if (ServerConfigurationSettings.Data.ContainsKey("StaffAlert.MinLevel"))
+                    StaffAlertMinRank = uint.Parse(ServerConfigurationSettings.Data["StaffAlert.MinLevel"]);
 
-                if (ServerConfigurationSettings.Data.ContainsKey("SeparatedTasksInMainLoops.enabled") && ServerConfigurationSettings.Data["SeparatedTasksInMainLoops.enabled"] == "true")
-                    SeparatedTasksInMainLoops = true;
+                if (ServerConfigurationSettings.Data.ContainsKey("game.multithread.enabled"))
+                    SeparatedTasksInMainLoops = ServerConfigurationSettings.Data["game.multithread.enabled"] == "true";
 
-                if (ServerConfigurationSettings.Data.ContainsKey("SeparatedTasksInGameClientManager.enabled") && ServerConfigurationSettings.Data["SeparatedTasksInGameClientManager.enabled"] == "true")
-                    SeparatedTasksInGameClientManager = true;
+                if (ServerConfigurationSettings.Data.ContainsKey("client.multithread.enabled"))
+                    SeparatedTasksInGameClientManager =
+                        ServerConfigurationSettings.Data["client.multithread.enabled"] == "true";
 
-                if (ServerConfigurationSettings.Data.ContainsKey("Debug"))
-                    if (ServerConfigurationSettings.Data["Debug"] == "true")
-                        DebugMode = true;
+                if (ServerConfigurationSettings.Data.ContainsKey("debug.packet"))
+                    if (ServerConfigurationSettings.Data["debug.packet"] == "true")
+                        PacketDebugMode = true;
 
                 Writer.WriteLine("Yupi Emulator ready. Status: idle", "Yupi.Boot");
 
@@ -397,8 +416,10 @@ namespace Yupi
             }
             catch (Exception e)
             {
-                Writer.WriteLine("Error loading config.ini: Configuration file is invalid" + Environment.NewLine + e.Message, "Yupi.Boot", ConsoleColor.Red);
-                Writer.WriteLine("Please press Y to get more details or press other Key to Exit", "Yupi.Boot", ConsoleColor.Red);
+                Writer.WriteLine("Error When Starting Yupi Environment!" + Environment.NewLine + e.Message, "Yupi.Boot",
+                    ConsoleColor.Red);
+                Writer.WriteLine("Please press Y to get more details or press other Key to Exit", "Yupi.Boot",
+                    ConsoleColor.Red);
                 ConsoleKeyInfo key = Console.ReadKey();
 
                 if (key.Key == ConsoleKey.Y)
@@ -407,7 +428,7 @@ namespace Yupi
                     Writer.WriteLine(
                         Environment.NewLine + "[Message] Error Details: " + Environment.NewLine + e.StackTrace +
                         Environment.NewLine + e.InnerException + Environment.NewLine + e.TargetSite +
-                        Environment.NewLine + "[Message]Press Any Key To Exit", "Yupi.Boot", ConsoleColor.Red);
+                        Environment.NewLine + "[Message] Press Any Key To Exit", "Yupi.Boot", ConsoleColor.Red);
                     Console.ReadKey();
                     Environment.Exit(1);
                 }
@@ -417,28 +438,28 @@ namespace Yupi
         }
 
         /// <summary>
-        /// Convert's Enum to Boolean
+        ///     Convert's Enum to Boolean
         /// </summary>
         /// <param name="theEnum">The theEnum.</param>
         /// <returns><c>true</c> if XXXX, <c>false</c> otherwise.</returns>
         internal static bool EnumToBool(string theEnum) => theEnum == "1";
 
         /// <summary>
-        /// Convert's Boolean to Integer
+        ///     Convert's Boolean to Integer
         /// </summary>
         /// <param name="theBool">if set to <c>true</c> [theBool].</param>
         /// <returns>System.Int32.</returns>
         internal static int BoolToInteger(bool theBool) => theBool ? 1 : 0;
 
         /// <summary>
-        /// Convert's Boolean to Enum
+        ///     Convert's Boolean to Enum
         /// </summary>
         /// <param name="theBool">if set to <c>true</c> [theBool].</param>
         /// <returns>System.String.</returns>
         internal static string BoolToEnum(bool theBool) => theBool ? "1" : "0";
 
         /// <summary>
-        /// Generates a Random Number in the Interval Min,Max
+        ///     Generates a Random Number in the Interval Min,Max
         /// </summary>
         /// <param name="min">The minimum.</param>
         /// <param name="max">The maximum.</param>
@@ -446,22 +467,25 @@ namespace Yupi
         internal static int GetRandomNumber(int min, int max) => RandomNumberGenerator.Get(min, max);
 
         /// <summary>
-        /// Get's the Actual Timestamp in Unix Format
+        ///     Get's the Actual Timestamp in Unix Format
         /// </summary>
         /// <returns>System.Int32.</returns>
-        internal static int GetUnixTimeStamp() => (int)(DateTime.UtcNow - new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalSeconds;
+        internal static int GetUnixTimeStamp()
+            => (int) (DateTime.UtcNow - new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalSeconds;
 
         /// <summary>
-        /// Convert's a Unix TimeStamp to DateTime
+        ///     Convert's a Unix TimeStamp to DateTime
         /// </summary>
         /// <param name="unixTimeStamp">The unix time stamp.</param>
         /// <returns>DateTime.</returns>
-        internal static DateTime UnixToDateTime(double unixTimeStamp) => (new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Local)).AddSeconds(unixTimeStamp).ToLocalTime();
+        internal static DateTime UnixToDateTime(double unixTimeStamp)
+            => new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Local).AddSeconds(unixTimeStamp).ToLocalTime();
 
-        internal static DateTime UnixToDateTime(int unixTimeStamp) => (new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Local)).AddSeconds(unixTimeStamp).ToLocalTime();
+        internal static DateTime UnixToDateTime(int unixTimeStamp)
+            => new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Local).AddSeconds(unixTimeStamp).ToLocalTime();
 
         /// <summary>
-        /// Convert timestamp to GroupJoin String
+        ///     Convert timestamp to GroupJoin String
         /// </summary>
         /// <param name="timeStamp">The target.</param>
         /// <returns>System.String.</returns>
@@ -473,22 +497,23 @@ namespace Yupi
         }
 
         /// <summary>
-        /// Convert's a DateTime to Unix TimeStamp
+        ///     Convert's a DateTime to Unix TimeStamp
         /// </summary>
         /// <param name="target">The target.</param>
         /// <returns>System.Int32.</returns>
-        internal static int DateTimeToUnix(DateTime target) => Convert.ToInt32((target - new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalSeconds);
+        internal static int DateTimeToUnix(DateTime target)
+            => Convert.ToInt32((target - new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalSeconds);
 
         /// <summary>
-        /// Get the Actual Time
+        ///     Get the Actual Time
         /// </summary>
         /// <returns>System.Int64.</returns>
-        internal static long Now() => ((long)(DateTime.UtcNow - new DateTime(1970, 1, 1, 0, 0, 0)).TotalMilliseconds);
+        internal static long Now() => (long) (DateTime.UtcNow - new DateTime(1970, 1, 1, 0, 0, 0)).TotalMilliseconds;
 
         internal static int DifferenceInMilliSeconds(DateTime time, DateTime tFrom)
         {
-            var time1 = tFrom.Subtract(new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalMilliseconds;
-            var time2 = time.Subtract(new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalMilliseconds;
+            double time1 = tFrom.Subtract(new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalMilliseconds;
+            double time2 = time.Subtract(new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalMilliseconds;
 
             if ((time1 >= double.MaxValue) || (time1 <= double.MinValue) || time1 <= 0.0)
                 time1 = 0.0;
@@ -500,21 +525,26 @@ namespace Yupi
         }
 
         /// <summary>
-        /// Filter's the Habbo Avatars AvatarFigureParts
+        ///     Filter's the Habbo Avatars AvatarFigureParts
         /// </summary>
         /// <param name="figure">The figure.</param>
         /// <returns>System.String.</returns>
-        internal static string FilterFigure(string figure) => figure.Any(character => !IsValid(character)) ? "lg-3023-1335.hr-828-45.sh-295-1332.hd-180-4.ea-3168-89.ca-1813-62.ch-235-1332" : figure;
+        internal static string FilterFigure(string figure)
+            =>
+                figure.Any(character => !IsValid(character))
+                    ? "lg-3023-1335.hr-828-45.sh-295-1332.hd-180-4.ea-3168-89.ca-1813-62.ch-235-1332"
+                    : figure;
 
         /// <summary>
-        /// Check if is a Valid AlphaNumeric String
+        ///     Check if is a Valid AlphaNumeric String
         /// </summary>
         /// <param name="inputStr">The input string.</param>
         /// <returns><c>true</c> if [is valid alpha numeric] [the specified input string]; otherwise, <c>false</c>.</returns>
-        internal static bool IsValidAlphaNumeric(string inputStr) => !string.IsNullOrEmpty(inputStr.ToLower()) && inputStr.ToLower().All(IsValid);
+        internal static bool IsValidAlphaNumeric(string inputStr)
+            => !string.IsNullOrEmpty(inputStr.ToLower()) && inputStr.ToLower().All(IsValid);
 
         /// <summary>
-        /// Get a Habbo With the Habbo's Username
+        ///     Get a Habbo With the Habbo's Username
         /// </summary>
         /// <param name="userName">Name of the user.</param>
         /// <returns>Habbo.</returns>
@@ -523,17 +553,17 @@ namespace Yupi
         {
             try
             {
-                using (var queryReactor = GetDatabaseManager().GetQueryReactor())
+                using (IQueryAdapter commitableQueryReactor = GetDatabaseManager().GetQueryReactor())
                 {
-                    queryReactor.SetQuery("SELECT id FROM users WHERE username = @user");
+                    commitableQueryReactor.SetQuery("SELECT id FROM users WHERE username = @user");
 
-                    queryReactor.AddParameter("user", userName);
+                    commitableQueryReactor.AddParameter("user", userName);
 
-                    int integer = queryReactor.GetInteger();
+                    int integer = commitableQueryReactor.GetInteger();
 
                     if (integer > 0)
                     {
-                        Habbo result = GetHabboById((uint)integer);
+                        Habbo result = GetHabboById((uint) integer);
 
                         return result;
                     }
@@ -547,7 +577,7 @@ namespace Yupi
         }
 
         /// <summary>
-        /// Check if the Input String is a Integer
+        ///     Check if the Input String is a Integer
         /// </summary>
         /// <param name="theNum">The theNum.</param>
         /// <returns><c>true</c> if the specified theNum is number; otherwise, <c>false</c>.</returns>
@@ -558,37 +588,37 @@ namespace Yupi
         }
 
         /// <summary>
-        /// Get the Database Configuration Data
+        ///     Get the Database Configuration Data
         /// </summary>
         /// <returns>ConfigData.</returns>
         internal static ServerDatabaseSettings GetDbConfig() => ConfigData;
 
         /// <summary>
-        /// Get's the Default Emulator Encoding
+        ///     Get's the Default Emulator Encoding
         /// </summary>
         /// <returns>Encoding.</returns>
         internal static Encoding GetDefaultEncoding() => _defaultEncoding;
 
         /// <summary>
-        /// Get's the Game Connection Manager Handler
+        ///     Get's the Game Connection Manager Handler
         /// </summary>
         /// <returns>ConnectionHandling.</returns>
         internal static ConnectionHandler GetConnectionManager() => _connectionManager;
 
         /// <summary>
-        /// Get's the Game Environment Handler
+        ///     Get's the Game Environment Handler
         /// </summary>
         /// <returns>Game.</returns>
         internal static Game.Game GetGame() => _game;
 
         /// <summary>
-        /// Gets the language.
+        ///     Gets the language.
         /// </summary>
         /// <returns>Languages.</returns>
         internal static ServerLanguageSettings GetLanguage() => _languages;
 
         /// <summary>
-        /// Filter's SQL Injection Characters
+        ///     Filter's SQL Injection Characters
         /// </summary>
         /// <param name="input">The input.</param>
         /// <returns>System.String.</returns>
@@ -603,13 +633,13 @@ namespace Yupi
         }
 
         /// <summary>
-        /// Get's the Database Manager Handler
+        ///     Get's the Database Manager Handler
         /// </summary>
         /// <returns>ConnectionManager.</returns>
         internal static DatabaseManager GetDatabaseManager() => Manager;
 
         /// <summary>
-        /// Perform's the Emulator Shutdown
+        ///     Perform's the Emulator Shutdown
         /// </summary>
         internal static void PerformShutDown()
         {
@@ -617,7 +647,7 @@ namespace Yupi
         }
 
         /// <summary>
-        /// Performs the restart.
+        ///     Performs the restart.
         /// </summary>
         internal static void PerformRestart()
         {
@@ -625,7 +655,7 @@ namespace Yupi
         }
 
         /// <summary>
-        /// Shutdown the Emulator
+        ///     Shutdown the Emulator
         /// </summary>
         /// <param name="restart">if set to <c>true</c> [restart].</param>
         /// Set a Different Message in Hotel
@@ -637,7 +667,7 @@ namespace Yupi
 
             ShutdownStarted = true;
 
-            var serverMessage = new ServerMessage(LibraryParser.OutgoingRequest("SuperNotificationMessageComposer"));
+            ServerMessage serverMessage = new ServerMessage(LibraryParser.OutgoingRequest("SuperNotificationMessageComposer"));
             serverMessage.AppendString("disconnection");
             serverMessage.AppendInteger(2);
             serverMessage.AppendString("title");
@@ -656,31 +686,25 @@ namespace Yupi
 
             GetConnectionManager().Destroy();
 
-            foreach (Guild group in _game.GetGroupManager().Groups.Values) group.UpdateForum();
+            foreach (Group group in _game.GetGroupManager().Groups.Values) group.UpdateForum();
 
-            using (var queryReactor = Manager.GetQueryReactor())
+            using (IQueryAdapter commitableQueryReactor = Manager.GetQueryReactor())
             {
-                queryReactor.RunFastQuery("UPDATE users SET online = '0'");
-                queryReactor.RunFastQuery("UPDATE rooms_data SET users_now = 0");
-                queryReactor.RunFastQuery("TRUNCATE TABLE users_rooms_visits");
+                commitableQueryReactor.RunFastQuery("UPDATE users SET online = '0'");
+                commitableQueryReactor.RunFastQuery("UPDATE rooms_data SET users_now = 0");
+                commitableQueryReactor.RunFastQuery("TRUNCATE TABLE users_rooms_visits");
             }
 
             _connectionManager.Destroy();
             _game.Destroy();
 
-            try
-            {
-                Manager.Destroy();
-                Writer.WriteLine("Game Manager destroyed", "Yupi.Game", ConsoleColor.DarkYellow);
-            }
-            catch (Exception e)
-            {
-                Writer.LogException("Yupi.cs PerformShutDown GameManager" + e);
-            }
+
+            Writer.WriteLine("Game Manager destroyed", "Yupi.Game", ConsoleColor.DarkYellow);
 
             TimeSpan span = DateTime.Now - now;
 
-            Writer.WriteLine("Elapsed " + TimeSpanToString(span) + "ms on Shutdown Proccess", "Yupi.Life", ConsoleColor.DarkYellow);
+            Writer.WriteLine("Elapsed " + TimeSpanToString(span) + "ms on Shutdown Proccess", "Yupi.Life",
+                ConsoleColor.DarkYellow);
 
             if (!restart)
                 Writer.WriteLine("Shutdown Completed. Press Any Key to Continue...", string.Empty, ConsoleColor.DarkRed);
@@ -698,14 +722,15 @@ namespace Yupi
         }
 
         /// <summary>
-        /// Convert's a Unix TimeSpan to A String
+        ///     Convert's a Unix TimeSpan to A String
         /// </summary>
         /// <param name="span">The span.</param>
         /// <returns>System.String.</returns>
-        internal static string TimeSpanToString(TimeSpan span) => string.Concat(span.Seconds, " s, ", span.Milliseconds, " ms");
+        internal static string TimeSpanToString(TimeSpan span)
+            => string.Concat(span.Seconds, " s, ", span.Milliseconds, " ms");
 
         /// <summary>
-        /// Check's if Input Data is a Valid AlphaNumeric Character
+        ///     Check's if Input Data is a Valid AlphaNumeric Character
         /// </summary>
         /// <param name="c">The c.</param>
         /// <returns><c>true</c> if the specified c is valid; otherwise, <c>false</c>.</returns>

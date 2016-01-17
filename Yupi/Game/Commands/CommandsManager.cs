@@ -1,11 +1,37 @@
-﻿using System;
+﻿/**
+     Because i love chocolat...                                      
+                                    88 88  
+                                    "" 88  
+                                       88  
+8b       d8 88       88 8b,dPPYba,  88 88  
+`8b     d8' 88       88 88P'    "8a 88 88  
+ `8b   d8'  88       88 88       d8 88 ""  
+  `8b,d8'   "8a,   ,a88 88b,   ,a8" 88 aa  
+    Y88'     `"YbbdP'Y8 88`YbbdP"'  88 88  
+    d8'                 88                 
+   d8'                  88     
+   
+   Private Habbo Hotel Emulating System
+   @author Claudio A. Santoro W.
+   @author Kessiler R.
+   @version dev-beta
+   @license MIT
+   @copyright Sulake Corporation Oy
+   @observation All Rights of Habbo, Habbo Hotel, and all Habbo contents and it's names, is copyright from Sulake
+   Corporation Oy. Yupi! has nothing linked with Sulake. 
+   This Emulator is Only for DEVELOPMENT uses. If you're selling this you're violating Sulakes Copyright.
+*/
+
+using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using Yupi.Core.Io;
+using Yupi.Data.Base.Adapters.Interfaces;
 using Yupi.Game.Commands.Controllers;
 using Yupi.Game.Commands.Interfaces;
 using Yupi.Game.GameClients.Interfaces;
+using Yupi.Game.Users;
 
 namespace Yupi.Game.Commands
 {
@@ -75,7 +101,6 @@ namespace Yupi.Game.Commands
 
             CommandsDictionary.Add("refresh_navigator", new RefreshNavigator());
             CommandsDictionary.Add("ltd", new Ltd());
-            CommandsDictionary.Add("refresh_quests", new RefreshQuests());
             CommandsDictionary.Add("refresh_polls", new RefreshPolls());
             CommandsDictionary.Add("refresh_achievements", new RefreshAchievements());
             CommandsDictionary.Add("refresh_groups", new RefreshGroups());
@@ -146,7 +171,6 @@ namespace Yupi.Game.Commands
             CommandsDictionary.Add("kill", new Kill());
             CommandsDictionary.Add("disco", new Disco());
 
-            //CommandsDictionary.Add("test", new Test());
             UpdateInfo();
         }
 
@@ -155,45 +179,56 @@ namespace Yupi.Game.Commands
         /// </summary>
         public static void UpdateInfo()
         {
-            using (var dbClient = Yupi.GetDatabaseManager().GetQueryReactor())
+            using (IQueryAdapter dbClient = Yupi.GetDatabaseManager().GetQueryReactor())
             {
                 dbClient.SetQuery("SELECT command, description, params, rank, alias FROM server_fuses");
-                var commandsTable = dbClient.GetTable();
+
+                DataTable commandsTable = dbClient.GetTable();
 
                 foreach (DataRow commandRow in commandsTable.Rows)
                 {
-                    var key = commandRow["command"].ToString();
-                    if (!CommandsDictionary.ContainsKey(key)) continue;
+                    string key = commandRow["command"].ToString();
 
-                    var command = CommandsDictionary[key];
+                    if (!CommandsDictionary.ContainsKey(key))
+                        continue;
+
+                    Command command = CommandsDictionary[key];
 
                     if (!string.IsNullOrEmpty(commandRow["description"].ToString()))
                         command.Description = commandRow["description"].ToString();
+
                     if (!string.IsNullOrEmpty(commandRow["params"].ToString()))
                         command.Usage = ':' + key + " [" + commandRow["params"] + "]";
+
                     if (!string.IsNullOrEmpty(commandRow["alias"].ToString()))
                     {
-                        var aliasStr = commandRow["alias"].ToString().Replace(" ", "").Replace(";", ",");
-                        foreach (var alias in aliasStr.Split(',').Where(alias => !string.IsNullOrEmpty(alias)))
+                        string aliasStr = commandRow["alias"].ToString().Replace(" ", "").Replace(";", ",");
+
+                        foreach (string alias in aliasStr.Split(',').Where(alias => !string.IsNullOrEmpty(alias)))
                         {
                             if (AliasDictionary.ContainsKey(alias))
                             {
-                                Writer.WriteLine("Duplicate alias key: " + alias, "Yupi.Commands",
+                                Writer.WriteLine("Duplicate alias key: " + alias, "Yupi.Commands", ConsoleColor.DarkRed);
+                                continue;
+                            }
+
+                            if (CommandsDictionary.ContainsKey(alias))
+                            {
+                                Writer.WriteLine("An alias cannot have same name as a normal command", "Yupi.Commands",
                                     ConsoleColor.DarkRed);
                                 continue;
                             }
-                            if (CommandsDictionary.ContainsKey(alias))
-                            {
-                                Writer.WriteLine("An alias cannot have same name as a normal command",
-                                    "Yupi.Commands", ConsoleColor.DarkRed);
-                                continue;
-                            }
+
                             AliasDictionary.Add(alias, key);
                         }
+
                         command.Alias = aliasStr;
                     }
+
                     short minRank;
-                    if (short.TryParse(commandRow["rank"].ToString(), out minRank)) command.MinRank = minRank;
+
+                    if (short.TryParse(commandRow["rank"].ToString(), out minRank))
+                        command.MinRank = minRank;
                 }
             }
         }
@@ -206,24 +241,30 @@ namespace Yupi.Game.Commands
         /// <returns><c>true</c> if XXXX, <c>false</c> otherwise.</returns>
         public static bool TryExecute(string str, GameClient client)
         {
-            if (string.IsNullOrEmpty(str) || client.GetHabbo() == null || !client.GetHabbo().InRoom) return false;
+            if (string.IsNullOrEmpty(str) || client.GetHabbo() == null || !client.GetHabbo().InRoom)
+                return false;
 
-            var pms = str.Split(' ');
-            var commandName = pms[0];
+            string[] pms = str.Split(' ');
 
-            if (AliasDictionary.ContainsKey(commandName)) commandName = AliasDictionary[commandName];
+            string commandName = pms[0];
 
-            if (!CommandsDictionary.ContainsKey(commandName)) return false;
-            var command = CommandsDictionary[commandName];
+            if (AliasDictionary.ContainsKey(commandName))
+                commandName = AliasDictionary[commandName];
 
-            if (!CanUse(command.MinRank, client)) return false;
+            if (!CommandsDictionary.ContainsKey(commandName))
+                return false;
+
+            Command command = CommandsDictionary[commandName];
+
+            if (!CanUse(command.MinRank, client))
+                return false;
 
             if (command.MinParams == -2 || (command.MinParams == -1 && pms.Length > 1) ||
                 command.MinParams != -1 && command.MinParams == pms.Length - 1)
-            {
                 return command.Execute(client, pms.Skip(1).ToArray());
-            }
+
             client.SendWhisper(Yupi.GetLanguage().GetVar("use_the_command_as") + command.Usage);
+
             return true;
         }
 
@@ -236,24 +277,28 @@ namespace Yupi.Game.Commands
         /// <returns><c>true</c> if XXXX, <c>false</c> otherwise.</returns>
         public static bool TryExecute(string scommand, string parameters, GameClient client)
         {
-            if (string.IsNullOrEmpty(scommand) || string.IsNullOrEmpty(parameters) || client.GetHabbo() == null || !client.GetHabbo().InRoom)
+            if (string.IsNullOrEmpty(scommand) || string.IsNullOrEmpty(parameters) || client.GetHabbo() == null ||
+                !client.GetHabbo().InRoom)
                 return false;
 
-            var pms = parameters.Split(' ');
+            string[] pms = parameters.Split(' ');
 
-            var commandName = scommand;
+            string commandName = scommand;
 
-            if (AliasDictionary.ContainsKey(commandName)) commandName = AliasDictionary[commandName];
+            if (AliasDictionary.ContainsKey(commandName))
+                commandName = AliasDictionary[commandName];
 
-            if (!CommandsDictionary.ContainsKey(commandName)) return false;
-            var command = CommandsDictionary[commandName];
+            if (!CommandsDictionary.ContainsKey(commandName))
+                return false;
 
-            if (!CanUse(command.MinRank, client)) return false;
+            Command command = CommandsDictionary[commandName];
 
-            if (command.MinParams == -2 || (command.MinParams == -1 && pms.Length > 1) || command.MinParams != -1 && command.MinParams == pms.Length - 1)
-            {
+            if (!CanUse(command.MinRank, client))
+                return false;
+
+            if (command.MinParams == -2 || (command.MinParams == -1 && pms.Length > 1) ||
+                command.MinParams != -1 && command.MinParams == pms.Length - 1)
                 return command.Execute(client, pms.Skip(1).ToArray());
-            }
 
             client.SendWhisper(Yupi.GetLanguage().GetVar("use_the_command_as") + command.Usage);
 
@@ -268,10 +313,10 @@ namespace Yupi.Game.Commands
         /// <returns><c>true</c> if this instance can use the specified minimum rank; otherwise, <c>false</c>.</returns>
         public static bool CanUse(short minRank, GameClient user)
         {
-            var habbo = user.GetHabbo();
+            Habbo habbo = user.GetHabbo();
 
-            var userRank = habbo.Rank;
-            var staff = habbo.HasFuse("fuse_any_room_controller");
+            uint userRank = habbo.Rank;
+            bool staff = habbo.HasFuse("fuse_any_room_controller");
 
             switch (minRank)
             {
@@ -279,16 +324,15 @@ namespace Yupi.Game.Commands
                     return habbo.HasFuse("fuse_vip_commands") || habbo.Vip;
 
                 case -2:
-                    return staff ||
-                           habbo.CurrentRoom.RoomData.OwnerId == habbo.Id;
+                    return staff || habbo.CurrentRoom.RoomData.OwnerId == habbo.Id;
 
                 case -1:
                     return staff || habbo.CurrentRoom.RoomData.OwnerId == habbo.Id ||
                            habbo.CurrentRoom.CheckRights(user);
-
-                case 0: //disabled
+                case 0:
                     return false;
             }
+
             return userRank >= minRank;
         }
     }

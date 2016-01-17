@@ -32,13 +32,13 @@ namespace Yupi.Data.Collections
     public class QueuedDictionary<T, TV>
     {
         private ConcurrentQueue<KeyValuePair<T, TV>> _addQueue;
-        private ConcurrentQueue<KeyValuePair<T, TV>> _updateQueue;
-        private ConcurrentQueue<T> _removeQueue;
-        private ConcurrentQueue<OnCycleDoneDelegate> _onCycleEventQueue;
         private EventHandler _onAdd;
-        private EventHandler _onUpdate;
-        private EventHandler _onRemove;
         private EventHandler _onCycleDone;
+        private ConcurrentQueue<OnCycleDoneDelegate> _onCycleEventQueue;
+        private EventHandler _onRemove;
+        private EventHandler _onUpdate;
+        private ConcurrentQueue<T> _removeQueue;
+        private ConcurrentQueue<KeyValuePair<T, TV>> _updateQueue;
 
         public QueuedDictionary()
         {
@@ -80,36 +80,27 @@ namespace Yupi.Data.Collections
 
         public void Add(T key, TV value)
         {
-            var keyValuePair = new KeyValuePair<T, TV>(key, value);
+            KeyValuePair<T, TV> keyValuePair = new KeyValuePair<T, TV>(key, value);
 
             _addQueue.Enqueue(keyValuePair);
         }
 
         public void Update(T key, TV value)
         {
-            var keyValuePair = new KeyValuePair<T, TV>(key, value);
+            KeyValuePair<T, TV> keyValuePair = new KeyValuePair<T, TV>(key, value);
 
             _updateQueue.Enqueue(keyValuePair);
         }
 
-        public void Remove(T key)
-        {
-            _removeQueue.Enqueue(key);
-        }
+        public void Remove(T key) => _removeQueue.Enqueue(key);
 
         public TV GetValue(T key) => Inner.ContainsKey(key) ? Inner[key] : default(TV);
 
         public bool ContainsKey(T key) => Inner.ContainsKey(key);
 
-        public void Clear()
-        {
-            Inner.Clear();
-        }
+        public void Clear() => Inner.Clear();
 
-        public void QueueDelegate(OnCycleDoneDelegate function)
-        {
-            _onCycleEventQueue.Enqueue(function);
-        }
+        public void QueueDelegate(OnCycleDoneDelegate function) => _onCycleEventQueue.Enqueue(function);
 
         public List<KeyValuePair<T, TV>> ToList() => Inner.ToList();
 
@@ -120,28 +111,33 @@ namespace Yupi.Data.Collections
             if (_addQueue?.Any() ?? false)
             {
                 KeyValuePair<T, TV> item;
-                while (_addQueue.TryDequeue(out item)) { }
+
+                while (_addQueue.TryDequeue(out item))
+                    continue;
             }
 
             if (_updateQueue?.Any() ?? false)
             {
                 KeyValuePair<T, TV> item;
 
-                while (_updateQueue.TryDequeue(out item)) { }
+                while (_updateQueue.TryDequeue(out item))
+                    continue;
             }
 
             if (_removeQueue?.Any() ?? false)
             {
                 T item;
 
-                while (_removeQueue.TryDequeue(out item)) { }
+                while (_removeQueue.TryDequeue(out item))
+                    continue;
             }
 
             if (_onCycleEventQueue?.Any() ?? false)
             {
                 OnCycleDoneDelegate item;
 
-                while (_onCycleEventQueue.TryDequeue(out item)) { }
+                while (_onCycleEventQueue.TryDequeue(out item))
+                    continue;
             }
 
             Inner = null;
@@ -207,7 +203,7 @@ namespace Yupi.Data.Collections
             if (!_removeQueue.Any())
                 return;
 
-            var list = new List<T>();
+            List<T> list = new List<T>();
 
             T item;
 
@@ -215,13 +211,13 @@ namespace Yupi.Data.Collections
             {
                 if (Inner.ContainsKey(item))
                 {
-                    var value = Inner[item];
+                    TV value = Inner[item];
 
                     TV junkItem;
 
                     Inner.TryRemove(item, out junkItem);
 
-                    var keyValuePair = new KeyValuePair<T, TV>(item, value);
+                    KeyValuePair<T, TV> keyValuePair = new KeyValuePair<T, TV>(item, value);
 
                     _onRemove?.Invoke(keyValuePair, null);
                 }
@@ -232,7 +228,7 @@ namespace Yupi.Data.Collections
             if (!list.Any())
                 return;
 
-            foreach (var current in list)
+            foreach (T current in list)
                 _removeQueue.Enqueue(current);
         }
     }

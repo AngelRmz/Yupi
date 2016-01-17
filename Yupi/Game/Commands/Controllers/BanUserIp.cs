@@ -1,5 +1,5 @@
 ﻿using System.Linq;
-using Yupi.Core.Io;
+using Yupi.Data;
 using Yupi.Game.Commands.Interfaces;
 using Yupi.Game.GameClients.Interfaces;
 
@@ -23,7 +23,7 @@ namespace Yupi.Game.Commands.Controllers
 
         public override bool Execute(GameClient session, string[] pms)
         {
-            var user = Yupi.GetGame().GetClientManager().GetClientByUserName(pms[0]);
+            GameClient user = Yupi.GetGame().GetClientManager().GetClientByUserName(pms[0]);
 
             if (user == null)
             {
@@ -44,7 +44,7 @@ namespace Yupi.Game.Commands.Controllers
             }
             catch
             {
-                Writer.LogException("Error while banning");
+                ServerLogManager.LogException($"An error occurred when {session.GetHabbo().UserName} tried to ban {user.GetHabbo().UserName}");
             }
 
             return true;

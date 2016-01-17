@@ -28,7 +28,7 @@ using System.Text;
 using Yupi.Core.Encryption.Crypto.KeyExchange;
 using Yupi.Core.Encryption.Hurlant.Crypto.Rsa;
 using Yupi.Core.Encryption.Utils;
-using Yupi.Core.Io;
+using Yupi.Data;
 
 namespace Yupi.Core.Encryption
 {
@@ -46,7 +46,8 @@ namespace Yupi.Core.Encryption
 
         public static string GetRsaDiffieHellmanPrimeKey() => GetRsaStringEncrypted(DiffieHellman.Prime.ToString());
 
-        public static string GetRsaDiffieHellmanGeneratorKey() => GetRsaStringEncrypted(DiffieHellman.Generator.ToString());
+        public static string GetRsaDiffieHellmanGeneratorKey()
+            => GetRsaStringEncrypted(DiffieHellman.Generator.ToString());
 
         public static string GetRsaDiffieHellmanPublicKey() => GetRsaStringEncrypted(DiffieHellman.PublicKey.ToString());
 
@@ -54,15 +55,16 @@ namespace Yupi.Core.Encryption
         {
             try
             {
-                var bytes = BigInteger.Parse('0' + publicKey, NumberStyles.HexNumber).ToByteArray();
-                var keyBytes = Rsa.Verify(bytes);
-                var keyString = Encoding.Default.GetString(keyBytes);
+                byte[] bytes = BigInteger.Parse('0' + publicKey, NumberStyles.HexNumber).ToByteArray();
+                byte[] keyBytes = Rsa.Verify(bytes);
+                string keyString = Encoding.Default.GetString(keyBytes);
 
                 return DiffieHellman.CalculateSharedKey(BigInteger.Parse(keyString));
             }
             catch
             {
-                Writer.LogCriticalException("Sorry, the Encryption Handler stopped Inesperatelly. Please Restart Emulator.");
+                ServerLogManager.LogCriticalException(
+                    "Sorry, the Encryption Handler stopped Inesperatelly. Please Restart Emulator.");
                 return 0;
             }
         }
@@ -71,14 +73,15 @@ namespace Yupi.Core.Encryption
         {
             try
             {
-                var m = Encoding.Default.GetBytes(message);
-                var c = Rsa.Sign(m);
+                byte[] m = Encoding.Default.GetBytes(message);
+                byte[] c = Rsa.Sign(m);
 
                 return Converter.BytesToHexString(c);
             }
             catch
             {
-                Writer.LogCriticalException("Sorry, the Encryption Handler stopped Inesperatelly. Please Restart Emulator.");
+                ServerLogManager.LogCriticalException(
+                    "Sorry, the Encryption Handler stopped Inesperatelly. Please Restart Emulator.");
                 return null;
             }
         }

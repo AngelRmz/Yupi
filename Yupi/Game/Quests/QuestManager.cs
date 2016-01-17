@@ -130,7 +130,7 @@ namespace Yupi.Game.Quests
                         case QuestType.XmasParty:
                         case QuestType.FurniMove:
                             num++;
-                            if ((num >= quest.GoalData))
+                            if (num >= quest.GoalData)
                                 flag = true;
                             goto IL_DC;
                     }
@@ -139,6 +139,7 @@ namespace Yupi.Game.Quests
                 num = (int) quest.GoalData;
                 flag = true;
                 IL_DC:
+
                 using (var queryReactor = Yupi.GetDatabaseManager().GetQueryReactor())
                 {
                     queryReactor.RunFastQuery(string.Concat("UPDATE users_quests_data SET progress = ", num,
@@ -147,8 +148,10 @@ namespace Yupi.Game.Quests
                         queryReactor.RunFastQuery(
                             $"UPDATE users_stats SET quest_id = 0 WHERE id = {session.GetHabbo().Id}");
                 }
+
                 session.GetHabbo().Quests[session.GetHabbo().CurrentQuestId] = num;
                 session.SendMessage(QuestStartedComposer.Compose(session, quest));
+
                 if (!flag)
                     return;
                 session.GetHabbo().CurrentQuestId = 0;
@@ -181,7 +184,7 @@ namespace Yupi.Game.Quests
         {
             return
                 _quests.Values.Where(
-                    current => current.Category.Contains(season) && (current.TimeUnlock - Yupi.GetUnixTimeStamp()) < 0)
+                    current => current.Category.Contains(season) && current.TimeUnlock - Yupi.GetUnixTimeStamp() < 0)
                     .ToList();
         }
 
@@ -227,7 +230,7 @@ namespace Yupi.Game.Quests
             if (!session.GetHabbo().InRoom)
                 return;
             var quest = GetQuest(session.GetHabbo().LastQuestCompleted);
-            var nextQuestInSeries = GetNextQuestInSeries(quest.Category, (quest.Number + 1));
+            var nextQuestInSeries = GetNextQuestInSeries(quest.Category, quest.Number + 1);
 
             if (nextQuestInSeries == null)
                 return;
@@ -271,7 +274,7 @@ namespace Yupi.Game.Quests
             int num;
             if (_count.TryGetValue(category, out num))
             {
-                _count[category] = (num + 1);
+                _count[category] = num + 1;
 
                 return;
             }

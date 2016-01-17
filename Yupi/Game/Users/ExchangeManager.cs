@@ -1,8 +1,10 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Timers;
-using Yupi.Core.Io;
 using Yupi.Core.Settings;
+using Yupi.Data;
+using Yupi.Game.GameClients.Interfaces;
 
 namespace Yupi.Game.Users
 {
@@ -37,24 +39,25 @@ namespace Yupi.Game.Users
         {
             try
             {
-                var clients = Yupi.GetGame().GetClientManager().Clients.Values;
-                foreach (
-                    var client in clients.Where(client => client != null && client.GetHabbo() != null))
+                ICollection<GameClient> clients = Yupi.GetGame().GetClientManager().Clients.Values;
+
+                foreach (GameClient client in clients.Where(client => client?.GetHabbo() != null))
                 {
-                    client.GetHabbo().Credits += ServerExtraSettings.CreditsToGive;
+                    client.GetHabbo().Credits += (uint) ServerExtraSettings.CreditsToGive;
                     client.GetHabbo().UpdateCreditsBalance();
-                    client.GetHabbo().ActivityPoints += ServerExtraSettings.PixelsToGive;
-                    if (ServerExtraSettings.DiamondsLoopEnabled)
-                        if (ServerExtraSettings.DiamondsVipOnly)
-                            if (client.GetHabbo().Vip || client.GetHabbo().Rank >= 6)
-                                client.GetHabbo().Diamonds += ServerExtraSettings.DiamondsToGive;
-                            else client.GetHabbo().Diamonds += ServerExtraSettings.DiamondsToGive;
+                    client.GetHabbo().Duckets += (uint) ServerExtraSettings.PixelsToGive;
+
+                    if (ServerExtraSettings.DiamondsLoopEnabled && ServerExtraSettings.DiamondsVipOnly)
+                        client.GetHabbo().Diamonds += client.GetHabbo().Vip || client.GetHabbo().Rank >= 6
+                            ? (uint) ServerExtraSettings.DiamondsToGive
+                            : (uint) ServerExtraSettings.DiamondsToGive;
+
                     client.GetHabbo().UpdateSeasonalCurrencyBalance();
                 }
             }
             catch (Exception ex)
             {
-                Writer.LogException(ex.ToString());
+                ServerLogManager.LogException(ex.ToString());
             }
         }
 

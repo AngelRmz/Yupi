@@ -32,8 +32,10 @@ namespace Yupi
 {
     internal class Program
     {
+        internal const uint ScClose = 0xF060;
+
         /// <summary>
-        /// Main Void of Azure.Emulator
+        ///     Main Void of Yupi.Emulator
         /// </summary>
         /// <param name="args">The arguments.</param>
         [SecurityPermission(SecurityAction.Demand, Flags = SecurityPermissionFlag.ControlAppDomain)]
@@ -81,7 +83,7 @@ namespace Yupi
         }
 
         /// <summary>
-        /// Initialize the Yupi Environment
+        ///     Initialize the Yupi Environment
         /// </summary>
         public static void InitEnvironment()
         {
@@ -90,22 +92,22 @@ namespace Yupi
 
             Console.CursorVisible = false;
 
-            var currentDomain = AppDomain.CurrentDomain;
+            AppDomain currentDomain = AppDomain.CurrentDomain;
 
             currentDomain.UnhandledException += ExceptionHandler;
             Yupi.Initialize();
         }
 
         /// <summary>
-        /// Mies the handler.
+        ///     Mies the handler.
         /// </summary>
         /// <param name="sender">The sender.</param>
-        /// <param name="args">The <see cref="UnhandledExceptionEventArgs"/> instance containing the event data.</param>
+        /// <param name="args">The <see cref="UnhandledExceptionEventArgs" /> instance containing the event data.</param>
         private static void ExceptionHandler(object sender, UnhandledExceptionEventArgs args)
         {
             ServerLogManager.DisablePrimaryWriting(true);
 
-            var ex = (Exception)args.ExceptionObject;
+            Exception ex = (Exception) args.ExceptionObject;
 
             ServerLogManager.LogCriticalException($"SYSTEM CRITICAL EXCEPTION: {ex}");
         }
@@ -118,7 +120,5 @@ namespace Yupi
 
         [DllImport("kernel32.dll")]
         private static extern IntPtr GetConsoleWindow();
-
-        internal const uint ScClose = 0xF060;
     }
 }

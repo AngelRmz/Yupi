@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using Yupi.Core.Io;
+using Yupi.Data;
 using Yupi.Game.Items.Interactions.Enums;
 using Yupi.Game.Items.Interfaces;
 using Yupi.Game.Items.Wired.Interfaces;
@@ -58,28 +58,34 @@ namespace Yupi.Game.Items.Wired.Handlers.Conditions
 
             try
             {
-                if (string.IsNullOrWhiteSpace(OtherString) || !OtherString.Contains(",") || !OtherExtraString.Contains("|"))
+                if (string.IsNullOrWhiteSpace(OtherString) || !OtherString.Contains(",") ||
+                    !OtherExtraString.Contains("|"))
                     return false;
 
-                var booleans = OtherString.ToLower().Split(',');
+                string[] booleans = OtherString.ToLower().Split(',');
+
                 useExtradata = booleans[0] == "true";
                 useRot = booleans[1] == "true";
                 usePos = booleans[2] == "true";
 
-                itemsOriginalData = OtherExtraString.Split('/').Select(data => data.Split('|')).ToDictionary(array => uint.Parse(array[0]), array => array.Skip(1).ToArray());
+                itemsOriginalData =
+                    OtherExtraString.Split('/')
+                        .Select(data => data.Split('|'))
+                        .ToDictionary(array => uint.Parse(array[0]), array => array.Skip(1).ToArray());
             }
             catch (Exception e)
             {
-                Writer.LogException(e.ToString());
+                ServerLogManager.LogException(e.ToString());
+
                 return false;
             }
 
-            foreach (var current in Items)
+            foreach (RoomItem current in Items)
             {
                 if (current == null || !itemsOriginalData.ContainsKey(current.Id))
                     return false;
 
-                var originalData = itemsOriginalData[current.Id];
+                string[] originalData = itemsOriginalData[current.Id];
 
                 if (useRot)
                     if (current.Rot != int.Parse(originalData[1]))
@@ -97,7 +103,7 @@ namespace Yupi.Game.Items.Wired.Handlers.Conditions
                 if (!usePos)
                     continue;
 
-                var originalPos = originalData[2].Split(',');
+                string[] originalPos = originalData[2].Split(',');
 
                 if ((current.X != int.Parse(originalPos[0])) || (current.Y != int.Parse(originalPos[1])))
                     return false;

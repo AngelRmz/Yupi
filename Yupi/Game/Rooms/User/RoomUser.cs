@@ -12,8 +12,10 @@ using Yupi.Core.Security.BlackWords.Enums;
 using Yupi.Core.Security.BlackWords.Structs;
 using Yupi.Game.Commands;
 using Yupi.Game.GameClients.Interfaces;
+using Yupi.Game.Items.Interactions;
 using Yupi.Game.Items.Interactions.Enums;
-using Yupi.Game.Pathfinding;
+using Yupi.Game.Items.Interfaces;
+using Yupi.Game.Pathfinding.Vectors;
 using Yupi.Game.Pets;
 using Yupi.Game.RoomBots;
 using Yupi.Game.RoomBots.Enumerators;
@@ -24,6 +26,7 @@ using Yupi.Game.Rooms.Items.Games.Types.Freeze.Enum;
 using Yupi.Game.Users;
 using Yupi.Messages;
 using Yupi.Messages.Parsers;
+using Group = Yupi.Game.Groups.Structs.Group;
 
 namespace Yupi.Game.Rooms.User
 {
@@ -32,11 +35,6 @@ namespace Yupi.Game.Rooms.User
     /// </summary>
     public class RoomUser : IEquatable<RoomUser>
     {
-        /// <summary>
-        ///     The _events
-        /// </summary>
-        public Queue Events1 { get; }
-
         /// <summary>
         ///     The _flood count
         /// </summary>
@@ -95,7 +93,7 @@ namespace Yupi.Game.Rooms.User
         /// <summary>
         ///     The dance identifier
         /// </summary>
-        internal int DanceId;
+        internal uint DanceId;
 
         /// <summary>
         ///     The fast walking
@@ -232,10 +230,13 @@ namespace Yupi.Game.Rooms.User
         /// </summary>
         internal uint LastItem;
 
+        internal int LastSelectedX, CopyX;
+        internal int LastSelectedY, CopyY;
+
         /// <summary>
         ///     The locked tiles count
         /// </summary>
-        internal int LockedTilesCount;
+        internal uint LockedTilesCount;
 
         /// <summary>
         ///     The love lock partner
@@ -463,6 +464,11 @@ namespace Yupi.Game.Rooms.User
         }
 
         /// <summary>
+        ///     The _events
+        /// </summary>
+        public Queue Events1 { get; }
+
+        /// <summary>
         ///     Gets the coordinate.
         /// </summary>
         /// <value>The coordinate.</value>
@@ -476,8 +482,8 @@ namespace Yupi.Game.Rooms.User
         {
             get
             {
-                var x = X;
-                var y = Y;
+                int x = X;
+                int y = Y;
 
                 switch (RotBody)
                 {
@@ -531,8 +537,8 @@ namespace Yupi.Game.Rooms.User
             get
             {
                 {
-                    var x = X + 1;
-                    var y = 0;
+                    int x = X + 1;
+                    int y = 0;
                     switch (RotBody)
                     {
                         case 0:
@@ -656,7 +662,7 @@ namespace Yupi.Game.Rooms.User
         /// <returns><c>true</c> if this instance is owner; otherwise, <c>false</c>.</returns>
         internal bool IsOwner()
         {
-            var currentRoom = GetRoom();
+            Room currentRoom = GetRoom();
             return !IsBot && currentRoom != null && GetUserName() == currentRoom.RoomData.Owner;
         }
 
@@ -669,7 +675,7 @@ namespace Yupi.Game.Rooms.User
             if (!IsAsleep)
                 return;
             IsAsleep = false;
-            var sleep = new ServerMessage(LibraryParser.OutgoingRequest("RoomUserIdleMessageComposer"));
+            ServerMessage sleep = new ServerMessage(LibraryParser.OutgoingRequest("RoomUserIdleMessageComposer"));
             sleep.AppendInteger(VirtualId);
             sleep.AppendBool(false);
             GetRoom().SendMessage(sleep);
@@ -700,7 +706,7 @@ namespace Yupi.Game.Rooms.User
                 if (!IsPet)
                     textColor = 2;
 
-                var botChatmsg = new ServerMessage();
+                ServerMessage botChatmsg = new ServerMessage();
                 botChatmsg.Init(shout
                     ? LibraryParser.OutgoingRequest("ShoutMessageComposer")
                     : LibraryParser.OutgoingRequest("ChatMessageComposer"));
@@ -717,29 +723,33 @@ namespace Yupi.Game.Rooms.User
 
             if (msg.Length > 100) // si el mensaje es mayor que la máxima longitud (scripter)
                 return;
+
             if (!ServerSecurityChatFilter.CanTalk(session, msg))
                 return;
 
-            if (session == null || session.GetHabbo() == null)
+            if (session?.GetHabbo() == null)
                 return;
 
             BlackWord word;
+
             if (!(msg.StartsWith(":deleteblackword ") && session.GetHabbo().Rank > 4) &&
                 BlackWordsManager.Check(msg, BlackWordType.Hotel, out word))
             {
-                var settings = word.TypeSettings;
-                //session.HandlePublicist(word.Word, msg, "CHAT", settings);
+                BlackWordTypeSettings settings = word.TypeSettings;
+
+                session.HandlePublicist(word.Word, msg, "CHAT", settings);
 
                 if (settings.ShowMessage)
                 {
-                    session.SendWhisper("A mensagem contém a palavra: " + word.Word +
-                                        " que não é permitida, você poderá ser banido!");
+                    session.SendWhisper("The message contains the word: " + word.Word +
+                                        " that isn't allowed. You can be banned");
                     return;
                 }
             }
 
             if (!IsBot && IsFlooded && FloodExpiryTime <= Yupi.GetUnixTimeStamp())
                 IsFlooded = false;
+
             else if (!IsBot && IsFlooded)
                 return; // ciao flooders!
 
@@ -747,12 +757,13 @@ namespace Yupi.Game.Rooms.User
                 return;
 
             UnIdle();
+
             if (!IsPet && !IsBot)
             {
                 if (msg.StartsWith(":") && CommandsManager.TryExecute(msg.Substring(1), session))
                     return;
 
-                var habbo = GetClient().GetHabbo();
+                Habbo habbo = GetClient().GetHabbo();
 
                 if (GetRoom().GetWiredHandler().ExecuteWired(Interaction.TriggerOnUserSay, this, msg))
                     return;
@@ -771,45 +782,62 @@ namespace Yupi.Game.Rooms.User
 
                 if (rank < 4)
                 {
-                    var span = DateTime.Now - habbo.SpamFloodTime;
+                    TimeSpan span = DateTime.Now - habbo.SpamFloodTime;
+
                     if ((span.TotalSeconds > habbo.SpamProtectionTime) && habbo.SpamProtectionBol)
                     {
                         _floodCount = 0;
                         habbo.SpamProtectionBol = false;
                         habbo.SpamProtectionAbuse = 0;
                     }
+
                     else if (span.TotalSeconds > 4.0)
                         _floodCount = 0;
+
                     ServerMessage message;
+
                     if ((span.TotalSeconds < habbo.SpamProtectionTime) && habbo.SpamProtectionBol)
                     {
                         message = new ServerMessage(LibraryParser.OutgoingRequest("FloodFilterMessageComposer"));
-                        var i = habbo.SpamProtectionTime - span.Seconds;
+
+                        int i = habbo.SpamProtectionTime - span.Seconds;
+
                         message.AppendInteger(i);
                         IsFlooded = true;
                         FloodExpiryTime = Yupi.GetUnixTimeStamp() + i;
                         GetClient().SendMessage(message);
+
                         return;
                     }
-                    if (((span.TotalSeconds < 4.0) && (_floodCount > 5)) && (rank < 5))
+
+                    if ((span.TotalSeconds < 4.0) && (_floodCount > 5) && (rank < 5))
                     {
                         message = new ServerMessage(LibraryParser.OutgoingRequest("FloodFilterMessageComposer"));
+
                         habbo.SpamProtectionCount++;
-                        if ((habbo.SpamProtectionCount%2) == 0)
+
+                        if (habbo.SpamProtectionCount%2 == 0)
                             habbo.SpamProtectionTime = 10*habbo.SpamProtectionCount;
                         else
                             habbo.SpamProtectionTime = 10*(habbo.SpamProtectionCount - 1);
+
                         habbo.SpamProtectionBol = true;
-                        var j = habbo.SpamProtectionTime - span.Seconds;
+
+                        int j = habbo.SpamProtectionTime - span.Seconds;
+
                         message.AppendInteger(j);
+
                         IsFlooded = true;
                         FloodExpiryTime = Yupi.GetUnixTimeStamp() + j;
+
                         GetClient().SendMessage(message);
                         return;
                     }
+
                     habbo.SpamFloodTime = DateTime.Now;
                     _floodCount++;
                 }
+
                 if (habbo.Preferences.ChatColor != textColor)
                 {
                     habbo.Preferences.ChatColor = textColor;
@@ -819,16 +847,18 @@ namespace Yupi.Game.Rooms.User
             else if (!IsPet)
                 textColor = 2;
 
-            var chatMsg = new ServerMessage();
+            ServerMessage chatMsg = new ServerMessage();
             chatMsg.Init(shout
                 ? LibraryParser.OutgoingRequest("ShoutMessageComposer")
                 : LibraryParser.OutgoingRequest("ChatMessageComposer"));
+
             chatMsg.AppendInteger(VirtualId);
             chatMsg.AppendString(msg);
             chatMsg.AppendInteger(ChatEmotions.GetEmotionsForText(msg));
             chatMsg.AppendInteger(textColor);
             chatMsg.AppendInteger(0); // links count (foreach string string bool)
             chatMsg.AppendInteger(count);
+
             GetRoom().BroadcastChatMessage(chatMsg, this, session.GetHabbo().Id);
 
             GetRoom().OnUserSay(this, msg, shout);
@@ -844,7 +874,7 @@ namespace Yupi.Game.Rooms.User
         internal bool IncrementAndCheckFlood(out int muteTime)
         {
             muteTime = 20;
-            var timeSpan = DateTime.Now - GetClient().GetHabbo().SpamFloodTime;
+            TimeSpan timeSpan = DateTime.Now - GetClient().GetHabbo().SpamFloodTime;
             if (timeSpan.TotalSeconds > GetClient().GetHabbo().SpamProtectionTime &&
                 GetClient().GetHabbo().SpamProtectionBol)
             {
@@ -877,13 +907,8 @@ namespace Yupi.Game.Rooms.User
             GoalY = 0;
             SetStep = false;
 
-            try
-            {
+            if (GetRoom().GetRoomUserManager().ToSet.ContainsKey(new Point(SetX, SetY)))
                 GetRoom().GetRoomUserManager().ToSet.Remove(new Point(SetX, SetY));
-            }
-            catch (Exception)
-            {
-            }
 
             SetX = 0;
             SetY = 0;
@@ -891,6 +916,7 @@ namespace Yupi.Game.Rooms.User
 
             if (!Statusses.ContainsKey("mv"))
                 return;
+
             Statusses.Remove("mv");
             UpdateNeeded = true;
         }
@@ -907,6 +933,16 @@ namespace Yupi.Game.Rooms.User
         /// <summary>
         ///     Moves to.
         /// </summary>
+        /// <param name="c">The c.</param>
+        /// <param name="pOverride"></param>
+        internal void MoveTo(Point c , bool pOverride)
+        {
+            MoveTo(c.X, c.Y, pOverride);
+        }
+
+        /// <summary>
+        ///     Moves to.
+        /// </summary>
         /// <param name="x">The p x.</param>
         /// <param name="y">The p y.</param>
         /// <param name="pOverride">if set to <c>true</c> [p override].</param>
@@ -915,34 +951,54 @@ namespace Yupi.Game.Rooms.User
             if (TeleportEnabled)
             {
                 UnIdle();
+
                 GetRoom()
                     .SendMessage(GetRoom()
                         .GetRoomItemHandler()
                         .UpdateUserOnRoller(this, new Point(x, y), 0u,
                             GetRoom().GetGameMap().SqAbsoluteHeight(GoalX, GoalY)));
-                if (Statusses.ContainsKey("sit")) Z -= 0.35;
+
+                if (Statusses.ContainsKey("sit"))
+                    Z -= 0.35;
+
                 UpdateNeeded = true;
+
                 GetRoom().GetRoomUserManager().UpdateUserStatus(this, false);
+
                 return;
             }
-            if (GetRoom().GetGameMap().SquareHasUsers(x, y) && !pOverride) return;
-            if (Frozen) return;
 
-            var coord = new Point(x, y);
-            var allRoomItemForSquare = GetRoom().GetGameMap().GetCoordinatedHeighestItems(coord);
+            if (GetRoom().GetGameMap().SquareHasUsers(x, y) && !pOverride)
+                return;
+
+            if (Frozen)
+                return;
+
+            Point coord = new Point(x, y);
+
+            List<RoomItem> allRoomItemForSquare = GetRoom().GetGameMap().GetCoordinatedHeighestItems(coord);
+
             if ((RidingHorse && !IsBot && allRoomItemForSquare.Any()) || (IsPet && allRoomItemForSquare.Any()))
                 if (
                     allRoomItemForSquare.Any(
                         current =>
-                            (current.GetBaseItem().IsSeat ||
-                             current.GetBaseItem().InteractionType == Interaction.LowPool ||
-                             current.GetBaseItem().InteractionType == Interaction.Pool ||
-                             current.GetBaseItem().InteractionType == Interaction.HaloweenPool ||
-                             current.GetBaseItem().InteractionType == Interaction.Bed ||
-                             current.GetBaseItem().InteractionType == Interaction.PressurePadBed ||
-                             current.GetBaseItem().InteractionType == Interaction.Guillotine
-                                )))
+                            current.GetBaseItem().IsSeat ||
+                            current.GetBaseItem().InteractionType == Interaction.LowPool ||
+                            current.GetBaseItem().InteractionType == Interaction.Pool ||
+                            current.GetBaseItem().InteractionType == Interaction.HaloweenPool ||
+                            current.GetBaseItem().InteractionType == Interaction.Bed ||
+                            current.GetBaseItem().InteractionType == Interaction.PressurePadBed ||
+                            current.GetBaseItem().InteractionType == Interaction.Guillotine))
                     return;
+
+            if (IsPet && allRoomItemForSquare.Any(p => InteractionTypes.AreFamiliar(GlobalInteractions.PetBreeding, p.GetBaseItem().InteractionType)))
+            {
+                RoomItem s =
+                    allRoomItemForSquare.FirstOrDefault(
+                        p =>
+                            InteractionTypes.AreFamiliar(GlobalInteractions.PetBreeding, p.GetBaseItem().InteractionType));
+                Z -= s.GetBaseItem().Height;
+            }
 
             UnIdle();
             GoalX = x;
@@ -994,7 +1050,7 @@ namespace Yupi.Game.Rooms.User
         {
             CarryItemId = item;
             CarryTimer = item > 0 ? 240 : 0;
-            var serverMessage = new ServerMessage(LibraryParser.OutgoingRequest("ApplyHanditemMessageComposer"));
+            ServerMessage serverMessage = new ServerMessage(LibraryParser.OutgoingRequest("ApplyHanditemMessageComposer"));
             serverMessage.AppendInteger(VirtualId);
             serverMessage.AppendInteger(item);
             GetRoom().SendMessage(serverMessage);
@@ -1017,7 +1073,7 @@ namespace Yupi.Game.Rooms.User
         internal void SetRot(int rotation, bool headOnly)
         {
             if (Statusses.ContainsKey("lay") || IsWalking) return;
-            var num = RotBody - rotation;
+            int num = RotBody - rotation;
             RotHead = RotBody;
             if (Statusses.ContainsKey("sit") || headOnly)
                 switch (RotBody)
@@ -1105,10 +1161,10 @@ namespace Yupi.Game.Rooms.User
             {
                 if (GetClient() == null || GetClient().GetHabbo() == null)
                     return;
-                var group = Yupi.GetGame().GetGroupManager().GetGroup(GetClient().GetHabbo().FavouriteGroup);
+                Group group = Yupi.GetGame().GetGroupManager().GetGroup(GetClient().GetHabbo().FavouriteGroup);
                 if (GetClient() == null || GetClient().GetHabbo() == null)
                     return;
-                var habbo = GetClient().GetHabbo();
+                Habbo habbo = GetClient().GetHabbo();
 
                 if (habbo == null)
                     return;
@@ -1149,7 +1205,7 @@ namespace Yupi.Game.Rooms.User
             message.AppendString(BotData.Name);
             message.AppendString(BotData.Motto);
             if (BotData.AiType == AiType.Pet)
-                if (PetData.Type == 16u)
+                if (PetData.Type == "pet_monster")
                     message.AppendString(PetData.MoplaBreed.PlantData);
                 else if (PetData.HaveSaddle == Convert.ToBoolean(2))
                     message.AppendString(string.Concat(BotData.Look.ToLower(), " 3 4 10 0 2 ", PetData.PetHair, " ",
@@ -1167,18 +1223,18 @@ namespace Yupi.Game.Rooms.User
             message.AppendInteger(Y);
             message.AppendString(ServerUserChatTextHandler.GetString(Z));
             message.AppendInteger(0);
-            message.AppendInteger((BotData.AiType == AiType.Generic) ? 4 : 2);
+            message.AppendInteger(BotData.AiType == AiType.Generic ? 4 : 2);
             if (BotData.AiType == AiType.Pet)
             {
-                message.AppendInteger(PetData.Type);
+                message.AppendInteger(PetData.RaceId);
                 message.AppendInteger(PetData.OwnerId);
                 message.AppendString(PetData.OwnerName);
-                message.AppendInteger((PetData.Type == 16u) ? 0 : 1);
+                message.AppendInteger(PetData.Type == "pet_monster" ? 0 : 1);
                 message.AppendBool(PetData.HaveSaddle);
                 message.AppendBool(RidingHorse);
                 message.AppendInteger(0);
-                message.AppendInteger((PetData.Type == 16u) ? 1 : 0);
-                message.AppendString((PetData.Type == 16u) ? PetData.MoplaBreed.GrowStatus : "");
+                message.AppendInteger(PetData.Type == "pet_monster" ? 1 : 0);
+                message.AppendString(PetData.Type == "pet_monster" ? PetData.MoplaBreed.GrowStatus : "");
                 return;
             }
             message.AppendString(BotData.Gender.ToLower());
@@ -1204,28 +1260,37 @@ namespace Yupi.Game.Rooms.User
             message.AppendString(ServerUserChatTextHandler.GetString(Z));
             message.AppendInteger(RotHead);
             message.AppendInteger(RotBody);
-            var stringBuilder = new StringBuilder();
+
+            StringBuilder stringBuilder = new StringBuilder();
+
             stringBuilder.Append("/");
-            if (IsPet && PetData.Type == 16u)
-                stringBuilder.AppendFormat("/{0}{1}", PetData.MoplaBreed.GrowStatus, (Statusses.Count >= 1) ? "/" : "");
+
+            if (IsPet && PetData.Type == "pet_monster")
+                stringBuilder.AppendFormat("/{0}{1}", PetData.MoplaBreed.GrowStatus, Statusses.Count >= 1 ? "/" : "");
+
             lock (Statusses)
             {
-                foreach (var current in Statusses)
+                foreach (KeyValuePair<string, string> current in Statusses)
                 {
                     stringBuilder.Append(current.Key);
+
                     if (!string.IsNullOrEmpty(current.Value))
                     {
                         stringBuilder.Append(" ");
                         stringBuilder.Append(current.Value);
                     }
+
                     stringBuilder.Append("/");
                 }
             }
+
             stringBuilder.Append("/");
+
             message.AppendString(stringBuilder.ToString());
 
             if (!Statusses.ContainsKey("sign"))
                 return;
+
             RemoveStatus("sign");
             UpdateNeeded = true;
         }
@@ -1281,8 +1346,5 @@ namespace Yupi.Game.Rooms.User
         {
             return _mRoom ?? (_mRoom = Yupi.GetGame().GetRoomManager().GetRoom(RoomId));
         }
-
-        internal int LastSelectedX, CopyX;
-        internal int LastSelectedY, CopyY;
     }
 }

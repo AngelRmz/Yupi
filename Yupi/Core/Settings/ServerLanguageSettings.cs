@@ -25,47 +25,48 @@
 using System.Collections.Specialized;
 using System.Data;
 using Yupi.Core.Io;
+using Yupi.Data.Base.Adapters.Interfaces;
 
 namespace Yupi.Core.Settings
 {
     /// <summary>
-    /// Class Languages.
+    ///     Class Languages.
     /// </summary>
     internal class ServerLanguageSettings
     {
         /// <summary>
-        /// The texts
+        ///     The texts
         /// </summary>
         internal HybridDictionary Texts;
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="ServerLanguageSettings" /> class.
+        ///     Initializes a new instance of the <see cref="ServerLanguageSettings" /> class.
         /// </summary>
         /// <param name="language">The language.</param>
         internal ServerLanguageSettings(string language)
         {
             Texts = new HybridDictionary();
 
-            using (var queryReactor = Yupi.GetDatabaseManager().GetQueryReactor())
+            using (IQueryAdapter commitableQueryReactor = Yupi.GetDatabaseManager().GetQueryReactor())
             {
-                queryReactor.SetQuery($"SELECT * FROM server_langs WHERE lang = '{language}' ORDER BY id DESC");
+                commitableQueryReactor.SetQuery($"SELECT * FROM server_langs WHERE lang = '{language}' ORDER BY id DESC");
 
-                var table = queryReactor.GetTable();
+                DataTable table = commitableQueryReactor.GetTable();
 
                 if (table == null)
                     return;
 
                 foreach (DataRow dataRow in table.Rows)
                 {
-                    var name = dataRow["name"].ToString();
-                    var text = dataRow["text"].ToString();
+                    string name = dataRow["name"].ToString();
+                    string text = dataRow["text"].ToString();
                     Texts.Add(name, text);
                 }
             }
         }
 
         /// <summary>
-        /// Gets the variable.
+        ///     Gets the variable.
         /// </summary>
         /// <param name="var">The variable.</param>
         /// <returns>System.String.</returns>
@@ -80,7 +81,7 @@ namespace Yupi.Core.Settings
         }
 
         /// <summary>
-        /// Counts this instance.
+        ///     Counts this instance.
         /// </summary>
         /// <returns>System.Int32.</returns>
         internal int Count() => Texts.Count;

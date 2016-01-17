@@ -3,8 +3,10 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Data;
 using Yupi.Data;
+using Yupi.Data.Base.Adapters.Interfaces;
+using Yupi.Game.Browser.Models;
 using Yupi.Game.GameClients.Interfaces;
-using Yupi.Game.Groups.Interfaces;
+using Yupi.Game.Groups.Structs;
 using Yupi.Game.Rooms.Chat;
 using Yupi.Messages;
 using Yupi.Messages.Parsers;
@@ -85,12 +87,12 @@ namespace Yupi.Game.Rooms.Data
         /// <summary>
         ///     The group
         /// </summary>
-        internal Guild Group;
+        internal Group Group;
 
         /// <summary>
         ///     The group identifier
         /// </summary>
-        internal int GroupId;
+        internal uint GroupId;
 
         /// <summary>
         ///     The identifier
@@ -122,7 +124,7 @@ namespace Yupi.Game.Rooms.Data
         /// <summary>
         ///     The owner identifier
         /// </summary>
-        internal int OwnerId;
+        internal uint OwnerId;
 
         /// <summary>
         ///     The pass word
@@ -277,37 +279,38 @@ namespace Yupi.Game.Rooms.Data
         {
             try
             {
-                Id = Convert.ToUInt32(row["id"]);
+                Id = (uint) row["id"];
                 Name = (string) row["caption"];
                 PassWord = (string) row["password"];
                 Description = (string) row["description"];
                 Type = (string) row["roomtype"];
                 Owner = string.Empty;
-                OwnerId = (int)row["owner"];
+                OwnerId = (uint) row["owner"];
                 RoomChat = new ConcurrentStack<Chatlog>();
                 WordFilter = new List<string>();
 
-                using (var queryReactor = Yupi.GetDatabaseManager().GetQueryReactor())
+                using (IQueryAdapter commitableQueryReactor = Yupi.GetDatabaseManager().GetQueryReactor())
                 {
-                    queryReactor.SetQuery("SELECT username FROM users WHERE id = @userId");
-                    queryReactor.AddParameter("userId", OwnerId);
+                    commitableQueryReactor.SetQuery("SELECT username FROM users WHERE id = @userId");
+                    commitableQueryReactor.AddParameter("userId", OwnerId);
 
-                    Owner = queryReactor.GetString();
+                    Owner = commitableQueryReactor.GetString();
 
-                    queryReactor.SetQuery($"SELECT user_id, message, timestamp FROM users_chatlogs WHERE room_id = '{Id}' ORDER BY timestamp ASC LIMIT 150");
-                    var table = queryReactor.GetTable();
+                    commitableQueryReactor.SetQuery($"SELECT user_id, message, timestamp FROM users_chatlogs WHERE room_id = '{Id}' ORDER BY timestamp ASC LIMIT 150");
+                    DataTable table = commitableQueryReactor.GetTable();
 
                     foreach (DataRow dataRow in table.Rows)
-                        RoomChat.Push(new Chatlog((uint) dataRow[0], (string) dataRow[1], Yupi.UnixToDateTime(int.Parse(dataRow[2].ToString())), false));
+                        RoomChat.Push(new Chatlog((uint) dataRow[0], (string) dataRow[1],
+                            Yupi.UnixToDateTime(int.Parse(dataRow[2].ToString())), false));
 
-                    queryReactor.SetQuery($"SELECT word FROM rooms_wordfilter WHERE room_id = '{Id}'");
-                    var tableFilter = queryReactor.GetTable();
+                    commitableQueryReactor.SetQuery($"SELECT word FROM rooms_wordfilter WHERE room_id = '{Id}'");
+                    DataTable tableFilter = commitableQueryReactor.GetTable();
 
                     foreach (DataRow dataRow in tableFilter.Rows)
                         WordFilter.Add(dataRow["word"].ToString());
                 }
 
-                var roomState = row["state"].ToString().ToLower();
+                string roomState = row["state"].ToString().ToLower();
 
                 switch (roomState)
                 {
@@ -342,7 +345,7 @@ namespace Yupi.Game.Rooms.Data
 
                 uint.TryParse(row["users_now"].ToString(), out UsersNow);
                 uint.TryParse(row["users_max"].ToString(), out UsersMax);
-                int.TryParse(row["group_id"].ToString(), out GroupId);
+                uint.TryParse(row["group_id"].ToString(), out GroupId);
                 uint.TryParse(row["chat_balloon"].ToString(), out ChatBalloon);
                 uint.TryParse(row["chat_speed"].ToString(), out ChatSpeed);
                 uint.TryParse(row["chat_max_distance"].ToString(), out ChatMaxDistance);
@@ -360,54 +363,17 @@ namespace Yupi.Game.Rooms.Data
                 _model = Yupi.GetGame().GetRoomManager().GetModel(ModelName, Id);
                 CompetitionStatus = 0;
 
-                /*
-                var dictionary = new Dictionary<int, int>();
-                if (!string.IsNullOrEmpty(row["icon_items"].ToString()))
-                {
-                    string[] array = row["icon_items"].ToString().Split('|');
-                    foreach (string text in array)
-                    {
-                        if (string.IsNullOrEmpty(text))
-                        {
-                            continue;
-                        }
-                        string[] array2 = text.Replace('.', ',').Split(',');
-                        int key = 0;
-                        int value = 0;
-                        int.TryParse(array2[0], out key);
-                        if (array2.Length > 1)
-                        {
-                            int.TryParse(array2[1], out value);
-                        }
-                        try
-                        {
-                            if (!dictionary.ContainsKey(key))
-                            {
-                                dictionary.Add(key, value);
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            Logging.LogException("Exception: " + ex + "[" + text + "]");
-                        }
-                    }
-                }
-                 */
-
                 Tags = new List<string>();
 
-                //if (row.IsNull("tags") || !string.IsNullOrEmpty(row["tags"].ToString()))
-                // @issue 96
                 if (row.IsNull("tags") || string.IsNullOrEmpty(row["tags"].ToString()))
                     return;
 
-                foreach (var item in row["tags"].ToString().Split(','))
+                foreach (string item in row["tags"].ToString().Split(','))
                     Tags.Add(item);
             }
             catch (Exception ex)
             {
-                ServerLogManager.LogException("Exception on RoomData Loading (Fill Void): " + ex);
-                ServerLogManager.HandleException(ex, "Yupi.HabboHotel.Rooms.RoomData");
+                ServerLogManager.LogException(ex, "Yupi.Game.Rooms.RoomData.Fill");
             }
         }
 
@@ -433,12 +399,12 @@ namespace Yupi.Game.Rooms.Data
             message.AppendInteger(Category);
 
             message.AppendInteger(TagCount);
-            foreach (var current in Tags) message.AppendString(current);
+            foreach (string current in Tags) message.AppendString(current);
 
             string imageData = null;
 
-            var enumType = enterRoom ? 32 : 0;
-            var publicItem = Yupi.GetGame().GetNavigator().GetPublicItem(Id);
+            int enumType = enterRoom ? 32 : 0;
+            PublicItem publicItem = Yupi.GetGame().GetNavigator().GetPublicItem(Id);
             if (publicItem != null && !string.IsNullOrEmpty(publicItem.Image))
             {
                 imageData = publicItem.Image;
@@ -480,7 +446,7 @@ namespace Yupi.Game.Rooms.Data
         internal void SerializeRoomData(ServerMessage message, GameClient session, bool isNotReload,
             bool? sendRoom = false, bool show = true)
         {
-            var room = Yupi.GetGame().GetRoomManager().GetRoom(session.GetHabbo().CurrentRoomId);
+            Room room = Yupi.GetGame().GetRoomManager().GetRoom(session.GetHabbo().CurrentRoomId);
 
             message.Init(LibraryParser.OutgoingRequest("RoomDataMessageComposer"));
             message.AppendBool(show); //flatId

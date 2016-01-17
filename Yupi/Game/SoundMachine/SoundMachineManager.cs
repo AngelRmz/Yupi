@@ -77,9 +77,9 @@ namespace Yupi.Game.SoundMachine
                     return 0;
 
                 if (TimePlaying >= CurrentSong.SongData.LengthSeconds)
-                    return (int)CurrentSong.SongData.LengthSeconds;
+                    return (int) CurrentSong.SongData.LengthSeconds;
 
-                return (int)(TimePlaying * 1000.0);
+                return (int) (TimePlaying*1000.0);
             }
         }
 
@@ -91,11 +91,11 @@ namespace Yupi.Game.SoundMachine
         {
             get
             {
-                var sortedDictionary = new SortedDictionary<int, SongInstance>();
+                SortedDictionary<int, SongInstance> sortedDictionary = new SortedDictionary<int, SongInstance>();
 
                 lock (_mPlaylist)
                 {
-                    foreach (var current in _mPlaylist)
+                    foreach (KeyValuePair<int, SongInstance> current in _mPlaylist)
                         sortedDictionary.Add(current.Key, current.Value);
                 }
 
@@ -149,12 +149,12 @@ namespace Yupi.Game.SoundMachine
         /// <returns>System.Int32.</returns>
         public int AddDisk(SongItem diskItem)
         {
-            var songId = diskItem.SongId;
+            uint songId = diskItem.SongId;
 
             if (songId == 0u)
                 return -1;
 
-            var song = SoundMachineSongManager.GetSong(songId);
+            SongData song = SoundMachineSongManager.GetSong(songId);
 
             if (song == null)
                 return -1;
@@ -166,7 +166,7 @@ namespace Yupi.Game.SoundMachine
             lock (_mLoadedDisks)
                 _mLoadedDisks.Add(diskItem.ItemId, diskItem);
 
-            var count = _mPlaylist.Count;
+            int count = _mPlaylist.Count;
 
             lock (_mPlaylist)
                 _mPlaylist.Add(count, new SongInstance(diskItem, song));
@@ -249,7 +249,7 @@ namespace Yupi.Game.SoundMachine
             lock (_mPlaylist)
                 _mPlaylist.Clear();
 
-            foreach (var current in list)
+            foreach (SongItem current in list)
                 AddDisk(current);
         }
 
@@ -331,7 +331,8 @@ namespace Yupi.Game.SoundMachine
         {
             if (CurrentSong != null)
             {
-                instance.SendMessage(SoundMachineComposer.ComposePlayingComposer(CurrentSong.SongData.Id, SongQueuePosition, 0));
+                instance.SendMessage(SoundMachineComposer.ComposePlayingComposer(CurrentSong.SongData.Id,
+                    SongQueuePosition, 0));
                 return;
             }
 
@@ -347,7 +348,9 @@ namespace Yupi.Game.SoundMachine
             if (user.IsBot || user.GetClient() == null || CurrentSong == null)
                 return;
 
-            user.GetClient().SendMessage(SoundMachineComposer.ComposePlayingComposer(CurrentSong.SongData.Id, SongQueuePosition, SongSyncTimestamp));
+            user.GetClient()
+                .SendMessage(SoundMachineComposer.ComposePlayingComposer(CurrentSong.SongData.Id, SongQueuePosition,
+                    SongSyncTimestamp));
         }
 
         /// <summary>

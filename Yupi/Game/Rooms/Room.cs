@@ -5,13 +5,15 @@ using System.Data;
 using System.Drawing;
 using System.Linq;
 using System.Threading;
-using Yupi.Core.Io;
 using Yupi.Data;
+using Yupi.Data.Base.Adapters.Interfaces;
 using Yupi.Game.Catalogs;
 using Yupi.Game.GameClients.Interfaces;
 using Yupi.Game.Items.Datas;
 using Yupi.Game.Items.Interactions.Enums;
+using Yupi.Game.Items.Interfaces;
 using Yupi.Game.Items.Wired;
+using Yupi.Game.Pets;
 using Yupi.Game.RoomBots;
 using Yupi.Game.RoomBots.Enumerators;
 using Yupi.Game.Rooms.Chat;
@@ -100,7 +102,7 @@ namespace Yupi.Game.Rooms
         private Queue _roomKick;
 
         /// <summary>
-        /// The _room thread
+        ///     The _room thread
         /// </summary>
         private Thread _roomThread;
 
@@ -200,7 +202,7 @@ namespace Yupi.Game.Rooms
         ///     Gets the user count.
         /// </summary>
         /// <value>The user count.</value>
-        internal int UserCount => _roomUserManager != null ? _roomUserManager.GetRoomUserCount() : 0;
+        internal int UserCount => _roomUserManager?.GetRoomUserCount() ?? 0;
 
         /// <summary>
         ///     Gets the tag count.
@@ -378,7 +380,7 @@ namespace Yupi.Game.Rooms
         }
 
         /// <summary>
-        /// Starts the room processing.
+        ///     Starts the room processing.
         /// </summary>
         internal void StartRoomProcessing()
         {
@@ -390,13 +392,17 @@ namespace Yupi.Game.Rooms
         /// </summary>
         internal void InitUserBots()
         {
-            using (var queryReactor = Yupi.GetDatabaseManager().GetQueryReactor())
+            using (IQueryAdapter commitableQueryReactor = Yupi.GetDatabaseManager().GetQueryReactor())
             {
-                queryReactor.SetQuery($"SELECT * FROM bots_data WHERE room_id = {RoomId} AND ai_type = 'generic'");
-                var table = queryReactor.GetTable();
+                commitableQueryReactor.SetQuery(
+                    $"SELECT * FROM bots_data WHERE room_id = {RoomId} AND ai_type = 'generic'");
+
+                DataTable table = commitableQueryReactor.GetTable();
+
                 if (table == null)
                     return;
-                foreach (var roomBot in from DataRow dataRow in table.Rows select BotManager.GenerateBotFromRow(dataRow)
+
+                foreach (RoomBot roomBot in from DataRow dataRow in table.Rows select BotManager.GenerateBotFromRow(dataRow)
                     )
                     _roomUserManager.DeployBot(roomBot, null);
             }
@@ -424,8 +430,8 @@ namespace Yupi.Game.Rooms
         /// </summary>
         internal void InitBots()
         {
-            var botsForRoom = Yupi.GetGame().GetBotManager().GetBotsForRoom(RoomId);
-            foreach (var current in botsForRoom.Where(current => !current.IsPet))
+            List<RoomBot> botsForRoom = Yupi.GetGame().GetBotManager().GetBotsForRoom(RoomId);
+            foreach (RoomBot current in botsForRoom.Where(current => !current.IsPet))
                 DeployBot(current);
         }
 
@@ -434,27 +440,25 @@ namespace Yupi.Game.Rooms
         /// </summary>
         internal void InitPets()
         {
-            using (var queryReactor = Yupi.GetDatabaseManager().GetQueryReactor())
+            using (IQueryAdapter commitableQueryReactor = Yupi.GetDatabaseManager().GetQueryReactor())
             {
-                queryReactor.SetQuery($"SELECT * FROM bots_data WHERE room_id = '{RoomId}' AND ai_type='pet'");
-                var table = queryReactor.GetTable();
+                commitableQueryReactor.SetQuery($"SELECT * FROM pets_data WHERE room_id = {RoomId}");
+
+                DataTable table = commitableQueryReactor.GetTable();
 
                 if (table == null)
                     return;
 
                 foreach (DataRow dataRow in table.Rows)
                 {
-                    queryReactor.SetQuery($"SELECT * FROM pets_data WHERE id = '{dataRow["id"]}' LIMIT 1");
-                    var row = queryReactor.GetRow();
+                    Pet pet = CatalogManager.GeneratePetFromRow(dataRow);
 
-                    if (row == null)
-                        continue;
+                    RoomBot bot = new RoomBot(pet.PetId, Convert.ToUInt32(RoomData.OwnerId), AiType.Pet, string.Empty);
 
-                    var pet = CatalogManager.GeneratePetFromRow(dataRow, row);
+                    bot.Update(RoomId, "freeroam", pet.Name, string.Empty, pet.Look, pet.X, pet.Y, (int) pet.Z, 4, 0, 0,
+                        0, 0,
+                        null, null, string.Empty, 0, 0, false, false);
 
-                    var bot = new RoomBot(pet.PetId, Convert.ToUInt32(RoomData.OwnerId), AiType.Pet, "");
-                    bot.Update(RoomId, "freeroam", pet.Name, "", pet.Look, pet.X, pet.Y, ((int) pet.Z), 4, 0, 0, 0, 0,
-                        null, null, "", 0, 0, false, false);
                     _roomUserManager.DeployBot(bot, pet);
                 }
             }
@@ -487,11 +491,11 @@ namespace Yupi.Game.Rooms
         /// </summary>
         internal void OnRoomKick()
         {
-            var list = _roomUserManager.UserList.Values.Where(
+            List<RoomUser> list = _roomUserManager.UserList.Values.Where(
                 current => !current.IsBot && current.GetClient().GetHabbo().Rank < 4u).ToList();
 
             {
-                foreach (var t in list)
+                foreach (RoomUser t in list)
                 {
                     GetRoomUserManager().RemoveUserFromRoom(t.GetClient(), true, false);
                     t.GetClient().CurrentRoomUserId = -1;
@@ -511,7 +515,7 @@ namespace Yupi.Game.Rooms
 
             //todo: why counting?
 
-            foreach (var current in _roomUserManager.UserList.Values)
+            foreach (RoomUser current in _roomUserManager.UserList.Values)
             {
                 if (current.IsBot || current.IsPet)
                 {
@@ -532,7 +536,7 @@ namespace Yupi.Game.Rooms
         /// <param name="shout">if set to <c>true</c> [shout].</param>
         internal void OnUserSay(RoomUser user, string message, bool shout)
         {
-            foreach (var current in _roomUserManager.UserList.Values)
+            foreach (RoomUser current in _roomUserManager.UserList.Values)
             {
                 try
                 {
@@ -553,7 +557,8 @@ namespace Yupi.Game.Rooms
                     {
                         current.BotAi.OnChatTick();
                     }
-                    else if (current.IsPet && message.StartsWith(current.PetData.Name) && current.PetData.Type != 16)
+                    else if (current.IsPet && message.StartsWith(current.PetData.Name) &&
+                             current.PetData.Type != "pet_monster")
                     {
                         message = message.Substring(current.PetData.Name.Length);
                         current.BotAi.OnUserSay(user, message);
@@ -574,11 +579,12 @@ namespace Yupi.Game.Rooms
         {
             DataTable table;
 
-            using (var queryReactor = Yupi.GetDatabaseManager().GetQueryReactor())
+            using (IQueryAdapter commitableQueryReactor = Yupi.GetDatabaseManager().GetQueryReactor())
             {
-                queryReactor.SetQuery($"SELECT items_songs.songid,items_rooms.id,items_rooms.item_name FROM items_songs LEFT JOIN items_rooms ON items_rooms.id = items_songs.itemid WHERE items_songs.roomid = {RoomId}");
+                commitableQueryReactor.SetQuery(
+                    $"SELECT items_songs.songid,items_rooms.id,items_rooms.item_name FROM items_songs LEFT JOIN items_rooms ON items_rooms.id = items_songs.itemid WHERE items_songs.roomid = {RoomId}");
 
-                table = queryReactor.GetTable();
+                table = commitableQueryReactor.GetTable();
             }
 
             if (table == null)
@@ -586,17 +592,17 @@ namespace Yupi.Game.Rooms
 
             foreach (DataRow dataRow in table.Rows)
             {
-                var songId = (uint) dataRow["songid"];
-                var num = Convert.ToUInt32(dataRow["id"]);
-                var baseName = dataRow["item_name"].ToString();
-                var songCode = string.Empty;
-                var extraData = string.Empty;
+                uint songId = (uint) dataRow["songid"];
+                uint num = Convert.ToUInt32(dataRow["id"]);
+                string baseName = dataRow["item_name"].ToString();
+                string songCode = string.Empty;
+                string extraData = string.Empty;
 
-                using (var queryreactor2 = Yupi.GetDatabaseManager().GetQueryReactor())
+                using (IQueryAdapter queryreactor2 = Yupi.GetDatabaseManager().GetQueryReactor())
                 {
                     queryreactor2.SetQuery($"SELECT extra_data,songcode FROM items_rooms WHERE id = {num}");
 
-                    var row = queryreactor2.GetRow();
+                    DataRow row = queryreactor2.GetRow();
 
                     if (row != null)
                     {
@@ -605,7 +611,7 @@ namespace Yupi.Game.Rooms
                     }
                 }
 
-                var diskItem = new SongItem(num, songId, baseName, extraData, songCode);
+                SongItem diskItem = new SongItem(num, songId, baseName, extraData, songCode);
 
                 GetRoomMusicController().AddDisk(diskItem);
             }
@@ -620,10 +626,11 @@ namespace Yupi.Game.Rooms
             DataTable dataTable;
             if (RoomData.Group != null)
                 return;
-            using (var queryReactor = Yupi.GetDatabaseManager().GetQueryReactor())
+            using (IQueryAdapter commitableQueryReactor = Yupi.GetDatabaseManager().GetQueryReactor())
             {
-                queryReactor.SetQuery($"SELECT rooms_rights.user_id FROM rooms_rights WHERE room_id = {RoomId}");
-                dataTable = queryReactor.GetTable();
+                commitableQueryReactor.SetQuery(
+                    $"SELECT rooms_rights.user_id FROM rooms_rights WHERE room_id = {RoomId}");
+                dataTable = commitableQueryReactor.GetTable();
             }
             if (dataTable == null)
                 return;
@@ -638,10 +645,10 @@ namespace Yupi.Game.Rooms
         {
             Bans = new Dictionary<long, double>();
             DataTable table;
-            using (var queryReactor = Yupi.GetDatabaseManager().GetQueryReactor())
+            using (IQueryAdapter commitableQueryReactor = Yupi.GetDatabaseManager().GetQueryReactor())
             {
-                queryReactor.SetQuery($"SELECT user_id, expire FROM rooms_bans WHERE room_id = {RoomId}");
-                table = queryReactor.GetTable();
+                commitableQueryReactor.SetQuery($"SELECT user_id, expire FROM rooms_bans WHERE room_id = {RoomId}");
+                table = commitableQueryReactor.GetTable();
             }
             if (table == null)
                 return;
@@ -667,7 +674,8 @@ namespace Yupi.Game.Rooms
         /// <param name="checkForGroups">if set to <c>true</c> [check for groups].</param>
         /// <param name="groupMembers"></param>
         /// <returns><c>true</c> if XXXX, <c>false</c> otherwise.</returns>
-        internal bool CheckRights(GameClient session, bool requireOwnerShip = false, bool checkForGroups = false, bool groupMembers = false)
+        internal bool CheckRights(GameClient session, bool requireOwnerShip = false, bool checkForGroups = false,
+            bool groupMembers = false)
         {
             try
             {
@@ -702,8 +710,9 @@ namespace Yupi.Game.Rooms
             }
             catch (Exception e)
             {
-                ServerLogManager.HandleException(e, "Room.CheckRights");
+                ServerLogManager.LogException(e, "Yupi.Game.Rooms.Room.CheckRights");
             }
+
             return false;
         }
 
@@ -751,7 +760,7 @@ namespace Yupi.Game.Rooms
             }
             catch (Exception e)
             {
-                ServerLogManager.HandleException(e, "Room.CheckRights");
+                ServerLogManager.LogException(e, "Yupi.Game.Rooms.Room.CheckRights");
             }
             return false;
         }
@@ -767,7 +776,7 @@ namespace Yupi.Game.Rooms
                     return;
                 try
                 {
-                    var idle = 0;
+                    int idle = 0;
                     GetRoomItemHandler().OnCycle();
                     GetRoomUserManager().OnCycle(ref idle);
 
@@ -783,16 +792,16 @@ namespace Yupi.Game.Rooms
                             Yupi.GetGame().GetRoomManager().UnloadRoom(this, "No users");
                             return;
                         }
-                        var serverMessage = GetRoomUserManager().SerializeStatusUpdates(false);
+
+                        ServerMessage serverMessage = GetRoomUserManager().SerializeStatusUpdates(false);
+
                         if (serverMessage != null)
                             SendMessage(serverMessage);
                     }
 
-                    if (_gameItemHandler != null)
-                        _gameItemHandler.OnCycle();
+                    _gameItemHandler?.OnCycle();
 
-                    if (_game != null)
-                        _game.OnCycle();
+                    _game?.OnCycle();
 
                     if (GotBanzai())
                         _banzai.OnCycle();
@@ -808,7 +817,7 @@ namespace Yupi.Game.Rooms
                 }
                 catch (Exception e)
                 {
-                    Writer.LogException(e.ToString());
+                    ServerLogManager.LogException(e.ToString());
                     OnRoomCrash(e);
                 }
             }
@@ -826,12 +835,12 @@ namespace Yupi.Game.Rooms
         {
             try
             {
-                foreach (var user in _roomUserManager.UserList.Values)
+                foreach (RoomUser user in _roomUserManager.UserList.Values)
                 {
                     if (user.IsBot)
                         continue;
 
-                    var usersClient = user.GetClient();
+                    GameClient usersClient = user.GetClient();
 
                     if (usersClient?.GetConnection() == null)
                         continue;
@@ -841,7 +850,7 @@ namespace Yupi.Game.Rooms
             }
             catch (Exception e)
             {
-                ServerLogManager.HandleException(e, "SendMessage");
+                ServerLogManager.LogException(e, "Yupi.Game.Rooms.Room.SendMessgae");
             }
         }
 
@@ -855,14 +864,14 @@ namespace Yupi.Game.Rooms
         {
             try
             {
-                var packetData = chatMsg.GetReversedBytes();
+                byte[] packetData = chatMsg.GetReversedBytes();
 
-                foreach (var user in _roomUserManager.UserList.Values)
+                foreach (RoomUser user in _roomUserManager.UserList.Values)
                 {
                     if (user.IsBot || user.IsPet)
                         continue;
 
-                    var usersClient = user.GetClient();
+                    GameClient usersClient = user.GetClient();
                     if (usersClient == null || roomUser == null || usersClient.GetHabbo() == null)
                         continue;
 
@@ -876,13 +885,13 @@ namespace Yupi.Game.Rooms
                     }
                     catch (Exception e)
                     {
-                        ServerLogManager.HandleException(e, "Room.SendMessageToUsersWithRights");
+                        ServerLogManager.LogException(e, "Yupi.Game.Rooms.Room.SendMessageToUsersWithRights");
                     }
                 }
             }
             catch (Exception e)
             {
-                ServerLogManager.HandleException(e, "Room.SendMessageToUsersWithRights");
+                ServerLogManager.LogException(e, "Yupi.Game.Rooms.Room.SendMessageToUsersWithRights");
             }
         }
 
@@ -907,18 +916,18 @@ namespace Yupi.Game.Rooms
 
             try
             {
-                var totalBytes = new byte[0];
-                var currentWorking = 0;
+                byte[] totalBytes = new byte[0];
+                int currentWorking = 0;
 
-                foreach (var message in messages)
+                foreach (ServerMessage message in messages)
                 {
-                    var toAppend = message.GetReversedBytes();
+                    byte[] toAppend = message.GetReversedBytes();
 
-                    var newLength = totalBytes.Length + toAppend.Length;
+                    int newLength = totalBytes.Length + toAppend.Length;
 
                     Array.Resize(ref totalBytes, newLength);
 
-                    for (var i = 0; i < toAppend.Length; i++)
+                    for (int i = 0; i < toAppend.Length; i++)
                     {
                         totalBytes[currentWorking] = toAppend[i];
                         currentWorking++;
@@ -929,7 +938,7 @@ namespace Yupi.Game.Rooms
             }
             catch (Exception e)
             {
-                ServerLogManager.HandleException(e, "SendMessage List<ServerMessage>");
+                ServerLogManager.LogException(e, "Yupi.Game.Rooms.Room.SendMessage List<ServerMessage>");
             }
         }
 
@@ -939,20 +948,20 @@ namespace Yupi.Game.Rooms
         /// <param name="message">The message.</param>
         internal void SendMessageToUsersWithRights(ServerMessage message)
         {
-            var messagebytes = message.GetReversedBytes();
+            byte[] messagebytes = message.GetReversedBytes();
 
             try
             {
-                foreach (var unit in _roomUserManager.UserList.Values)
+                foreach (RoomUser unit in _roomUserManager.UserList.Values)
                 {
-                    var user = unit;
+                    RoomUser user = unit;
                     if (user == null)
                         continue;
 
                     if (user.IsBot)
                         continue;
 
-                    var usersClient = user.GetClient();
+                    GameClient usersClient = user.GetClient();
                     if (usersClient == null || usersClient.GetConnection() == null)
                         continue;
 
@@ -964,7 +973,7 @@ namespace Yupi.Game.Rooms
             }
             catch (Exception e)
             {
-                ServerLogManager.HandleException(e, "SendMessageToUsersWithRights");
+                ServerLogManager.LogException(e, "Yupi.Game.Rooms.Room.SendMessageToUsersWithRights");
             }
         }
 
@@ -1004,11 +1013,11 @@ namespace Yupi.Game.Rooms
         internal void AddBan(int userId, long time)
         {
             if (!Bans.ContainsKey(Convert.ToInt32(userId)))
-                Bans.Add(userId, ((Yupi.GetUnixTimeStamp()) + time));
+                Bans.Add(userId, Yupi.GetUnixTimeStamp() + time);
 
-            using (var queryReactor = Yupi.GetDatabaseManager().GetQueryReactor())
-                queryReactor.RunFastQuery("REPLACE INTO rooms_bans VALUES (" + userId + ", " + RoomId + ", '" +
-                                          (Yupi.GetUnixTimeStamp() + time) + "')");
+            using (IQueryAdapter commitableQueryReactor = Yupi.GetDatabaseManager().GetQueryReactor())
+                commitableQueryReactor.RunFastQuery("REPLACE INTO rooms_bans VALUES (" + userId + ", " + RoomId + ", '" +
+                                                    (Yupi.GetUnixTimeStamp() + time) + "')");
         }
 
         /// <summary>
@@ -1017,12 +1026,12 @@ namespace Yupi.Game.Rooms
         /// <returns>List&lt;System.UInt32&gt;.</returns>
         internal List<uint> BannedUsers()
         {
-            var list = new List<uint>();
-            using (var queryReactor = Yupi.GetDatabaseManager().GetQueryReactor())
+            List<uint> list = new List<uint>();
+            using (IQueryAdapter commitableQueryReactor = Yupi.GetDatabaseManager().GetQueryReactor())
             {
-                queryReactor.SetQuery(
+                commitableQueryReactor.SetQuery(
                     $"SELECT user_id FROM rooms_bans WHERE expire > UNIX_TIMESTAMP() AND room_id={RoomId}");
-                var table = queryReactor.GetTable();
+                DataTable table = commitableQueryReactor.GetTable();
                 list.AddRange(from DataRow dataRow in table.Rows select (uint) dataRow[0]);
             }
             return list;
@@ -1044,9 +1053,10 @@ namespace Yupi.Game.Rooms
         /// <param name="userId">The user identifier.</param>
         internal void Unban(uint userId)
         {
-            using (var queryReactor = Yupi.GetDatabaseManager().GetQueryReactor())
-                queryReactor.RunFastQuery("DELETE FROM rooms_bans WHERE user_id=" + userId + " AND room_id=" + RoomId +
-                                          " LIMIT 1");
+            using (IQueryAdapter commitableQueryReactor = Yupi.GetDatabaseManager().GetQueryReactor())
+                commitableQueryReactor.RunFastQuery("DELETE FROM rooms_bans WHERE user_id=" + userId + " AND room_id=" +
+                                                    RoomId +
+                                                    " LIMIT 1");
             Bans.Remove(userId);
         }
 
@@ -1067,7 +1077,7 @@ namespace Yupi.Game.Rooms
         /// <returns><c>true</c> if [has active trade] [the specified user identifier]; otherwise, <c>false</c>.</returns>
         internal bool HasActiveTrade(uint userId)
         {
-            var array = ActiveTrades.ToArray();
+            object[] array = ActiveTrades.ToArray();
             return array.Cast<Trade>().Any(trade => trade.ContainsUser(userId));
         }
 
@@ -1078,7 +1088,7 @@ namespace Yupi.Game.Rooms
         /// <returns>Trade.</returns>
         internal Trade GetUserTrade(uint userId)
         {
-            var array = ActiveTrades.ToArray();
+            object[] array = ActiveTrades.ToArray();
             return array.Cast<Trade>().FirstOrDefault(trade => trade.ContainsUser(userId));
         }
 
@@ -1101,7 +1111,7 @@ namespace Yupi.Game.Rooms
         /// <param name="userId">The user identifier.</param>
         internal void TryStopTrade(uint userId)
         {
-            var userTrade = GetUserTrade(userId);
+            Trade userTrade = GetUserTrade(userId);
             if (userTrade == null)
                 return;
             userTrade.CloseTrade(userId);
@@ -1115,8 +1125,9 @@ namespace Yupi.Game.Rooms
         internal void SetMaxUsers(uint maxUsers)
         {
             RoomData.UsersMax = maxUsers;
-            using (var queryReactor = Yupi.GetDatabaseManager().GetQueryReactor())
-                queryReactor.RunFastQuery("UPDATE rooms_data SET users_max = " + maxUsers + " WHERE id = " + RoomId);
+            using (IQueryAdapter commitableQueryReactor = Yupi.GetDatabaseManager().GetQueryReactor())
+                commitableQueryReactor.RunFastQuery("UPDATE rooms_data SET users_max = " + maxUsers + " WHERE id = " +
+                                                    RoomId);
         }
 
         /// <summary>
@@ -1129,8 +1140,8 @@ namespace Yupi.Game.Rooms
         {
             if (ContainsBeds > 0)
             {
-                var furni = GetGameMap().GetCoordinatedItems(new Point(goalX, goalY));
-                foreach (var furno in furni)
+                List<RoomItem> furni = GetGameMap().GetCoordinatedItems(new Point(goalX, goalY));
+                foreach (RoomItem furno in furni)
                 {
                     if (furno.GetBaseItem().InteractionType == Interaction.Bed ||
                         furno.GetBaseItem().InteractionType == Interaction.PressurePadBed)
@@ -1145,7 +1156,7 @@ namespace Yupi.Game.Rooms
                             if (user.Y == goalY)
                                 return false;
                         }
-                        foreach (var casella in furno.GetCoords)
+                        foreach (Point casella in furno.GetCoords)
                         {
                             if (casella.X == goalX && casella.Y == goalY)
                             {
@@ -1180,8 +1191,8 @@ namespace Yupi.Game.Rooms
         internal void FlushSettings()
         {
             _mCycleEnded = true;
-            using (var queryReactor = Yupi.GetDatabaseManager().GetQueryReactor())
-                GetRoomItemHandler().SaveFurniture(queryReactor);
+            using (IQueryAdapter commitableQueryReactor = Yupi.GetDatabaseManager().GetQueryReactor())
+                GetRoomItemHandler().SaveFurniture(commitableQueryReactor);
             RoomData.Tags.Clear();
             UsersWithRights.Clear();
             Bans.Clear();
@@ -1202,7 +1213,7 @@ namespace Yupi.Game.Rooms
         /// </summary>
         internal void ReloadSettings()
         {
-            var data = Yupi.GetGame().GetRoomManager().GenerateRoomData(RoomId);
+            RoomData data = Yupi.GetGame().GetRoomManager().GenerateRoomData(RoomId);
             InitializeFromRoomData(data, false);
         }
 
@@ -1211,21 +1222,21 @@ namespace Yupi.Game.Rooms
         /// </summary>
         internal void UpdateFurniture()
         {
-            var list = new List<ServerMessage>();
-            var array = GetRoomItemHandler().FloorItems.Values.ToArray();
-            var array2 = array;
-            foreach (var roomItem in array2)
+            List<ServerMessage> list = new List<ServerMessage>();
+            RoomItem[] array = GetRoomItemHandler().FloorItems.Values.ToArray();
+            RoomItem[] array2 = array;
+            foreach (RoomItem roomItem in array2)
             {
-                var serverMessage = new ServerMessage(LibraryParser.OutgoingRequest("UpdateRoomItemMessageComposer"));
+                ServerMessage serverMessage = new ServerMessage(LibraryParser.OutgoingRequest("UpdateRoomItemMessageComposer"));
                 roomItem.Serialize(serverMessage);
                 list.Add(serverMessage);
             }
             Array.Clear(array, 0, array.Length);
-            var array3 = GetRoomItemHandler().WallItems.Values.ToArray();
-            var array4 = array3;
-            foreach (var roomItem2 in array4)
+            RoomItem[] array3 = GetRoomItemHandler().WallItems.Values.ToArray();
+            RoomItem[] array4 = array3;
+            foreach (RoomItem roomItem2 in array4)
             {
-                var serverMessage2 =
+                ServerMessage serverMessage2 =
                     new ServerMessage(LibraryParser.OutgoingRequest("UpdateRoomWallItemMessageComposer"));
                 roomItem2.Serialize(serverMessage2);
                 list.Add(serverMessage2);
@@ -1260,8 +1271,18 @@ namespace Yupi.Game.Rooms
         internal void AddChatlog(uint id, string message, bool globalMessage)
         {
             lock (RoomData.RoomChat)
-            {
                 RoomData.RoomChat.Push(new Chatlog(id, message, DateTime.Now, globalMessage));
+        }
+
+        internal void SaveRoomChatlog()
+        {
+            lock (RoomData.RoomChat)
+            {
+                using (IQueryAdapter adapter = Yupi.GetDatabaseManager().GetQueryReactor())
+                    adapter.RunFastQuery($"DELETE FROM users_chatlogs WHERE room_id = {RoomData.Id}");
+
+                    foreach (Chatlog chatlog in RoomData.RoomChat)
+                        chatlog.Save(Yupi.GetDatabaseManager().GetQueryReactor(), RoomData.Id);
             }
         }
 
@@ -1330,8 +1351,7 @@ namespace Yupi.Game.Rooms
 
             if (!forceLoad)
             {
-                _roomThread = new Thread(StartRoomProcessing);
-                _roomThread.Name = "Room Loader";
+                _roomThread = new Thread(StartRoomProcessing) {Name = "Room Loader"};
                 _roomThread.Start();
             }
 
@@ -1345,14 +1365,16 @@ namespace Yupi.Game.Rooms
         {
             if (_roomKick.Count <= 0)
                 return;
+
             lock (_roomKick.SyncRoot)
             {
                 while (_roomKick.Count > 0)
                 {
-                    var roomKick = (RoomKick) _roomKick.Dequeue();
-                    var list = new List<RoomUser>();
+                    RoomKick roomKick = (RoomKick) _roomKick.Dequeue();
+                    List<RoomUser> list = new List<RoomUser>();
+
                     foreach (
-                        var current in
+                        RoomUser current in
                             _roomUserManager.UserList.Values.Where(
                                 current =>
                                     !current.IsBot && current.GetClient().GetHabbo().Rank < (ulong) roomKick.MinRank))
@@ -1363,7 +1385,8 @@ namespace Yupi.Game.Rooms
                                     roomKick.Alert));
                         list.Add(current);
                     }
-                    foreach (var current2 in list)
+
+                    foreach (RoomUser current2 in list)
                     {
                         GetRoomUserManager().RemoveUserFromRoom(current2.GetClient(), true, false);
                         current2.GetClient().CurrentRoomUserId = -1;
@@ -1389,16 +1412,16 @@ namespace Yupi.Game.Rooms
         private void Dispose()
         {
             _mCycleEnded = true;
+
             Yupi.GetGame().GetRoomManager().QueueActiveRoomRemove(RoomData);
-            using (var queryReactor = Yupi.GetDatabaseManager().GetQueryReactor())
+
+            using (IQueryAdapter commitableQueryReactor = Yupi.GetDatabaseManager().GetQueryReactor())
             {
-                GetRoomItemHandler().SaveFurniture(queryReactor);
-                queryReactor.RunFastQuery($"UPDATE rooms_data SET users_now=0 WHERE id = {RoomId} LIMIT 1");
+                GetRoomItemHandler().SaveFurniture(commitableQueryReactor);
+                commitableQueryReactor.RunFastQuery($"UPDATE rooms_data SET users_now=0 WHERE id = {RoomId} LIMIT 1");
             }
-            if (_processTimer != null)
-            {
-                _processTimer.Dispose();
-            }
+
+            _processTimer?.Dispose();
             _processTimer = null;
             RoomData.Tags.Clear();
             _roomUserManager.UserList.Clear();
@@ -1409,10 +1432,13 @@ namespace Yupi.Game.Rooms
             RoomData.RoomChat.Clear();
 
             GetWiredHandler().Destroy();
-            foreach (var current in GetRoomItemHandler().FloorItems.Values)
+
+            foreach (RoomItem current in GetRoomItemHandler().FloorItems.Values)
                 current.Destroy();
-            foreach (var current2 in GetRoomItemHandler().WallItems.Values)
+
+            foreach (RoomItem current2 in GetRoomItemHandler().WallItems.Values)
                 current2.Destroy();
+
             ActiveTrades.Clear();
 
             RoomData = null;

@@ -23,7 +23,7 @@ namespace Yupi.Game.Commands.Controllers
 
         public override bool Execute(GameClient session, string[] pms)
         {
-            var message = new ServerMessage(LibraryParser.OutgoingRequest("SuperNotificationMessageComposer"));
+            ServerMessage message = new ServerMessage(LibraryParser.OutgoingRequest("SuperNotificationMessageComposer"));
             message.AppendString("events");
             message.AppendInteger(4);
             message.AppendString("title");
@@ -40,7 +40,7 @@ namespace Yupi.Game.Commands.Controllers
             message.AppendString("linkTitle");
             message.AppendString("Ir para o Evento");
 
-            /*foreach (var client in Azure.GetGame().GetClientManager().Clients.Values)
+            /*foreach (var client in Yupi.GetGame().GetClientManager().Clients.Values)
             {
                 if (client == null)
                     continue;

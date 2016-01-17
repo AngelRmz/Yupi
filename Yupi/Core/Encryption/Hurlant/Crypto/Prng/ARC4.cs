@@ -50,11 +50,11 @@ namespace Yupi.Core.Encryption.Hurlant.Crypto.Prng
             _j = 0;
 
             for (_i = 0; _i < PoolSize; ++_i)
-                _bytes[_i] = (byte)_i;
+                _bytes[_i] = (byte) _i;
 
             for (_i = 0; _i < PoolSize; ++_i)
             {
-                _j = (_j + _bytes[_i] + key[_i % key.Length]) & (PoolSize - 1);
+                _j = (_j + _bytes[_i] + key[_i%key.Length]) & (PoolSize - 1);
                 Swap(_i, _j);
             }
 
@@ -73,13 +73,13 @@ namespace Yupi.Core.Encryption.Hurlant.Crypto.Prng
 
         public void Parse(ref byte[] src)
         {
-            for (var k = 0; k < src.Length; k++)
+            for (int k = 0; k < src.Length; k++)
                 src[k] ^= Next();
         }
 
         private void Swap(int a, int b)
         {
-            var t = _bytes[a];
+            byte t = _bytes[a];
 
             _bytes[a] = _bytes[b];
             _bytes[b] = t;

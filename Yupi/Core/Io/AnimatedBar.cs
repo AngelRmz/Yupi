@@ -22,6 +22,7 @@
    This Emulator is Only for DEVELOPMENT uses. If you're selling this you're violating Sulakes Copyright.
 */
 
+using System;
 using System.Collections.Generic;
 using Yupi.Core.Io.Interfaces;
 
@@ -34,20 +35,17 @@ namespace Yupi.Core.Io
 
         public AnimatedBar()
         {
-            _animation = new List<string> { "/", "-", @"\", "|" };
+            _animation = new List<string> {"/", "-", @"\", "|"};
             _counter = 0;
         }
 
         /// <summary>
-        /// prints the character found in the animation according to the current index
+        ///     prints the character found in the animation according to the current index
         /// </summary>
         public override void Step()
         {
-            System.Console.Write("{0}\b", _animation[_counter]);
+            Console.Write("{0}\b", _animation[_counter%_animation.Count]);
             _counter++;
-
-            if (_counter == _animation.Count)
-                _counter = 0;
         }
     }
 }

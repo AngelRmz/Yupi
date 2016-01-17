@@ -26,31 +26,33 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using System.Web.UI;
 using Yupi.Game.Rooms.Data;
 using Yupi.Game.Users;
 
 namespace Yupi.Data
 {
     /// <summary>
-    /// Class CacheManager.
+    ///     Class CacheManager.
     /// </summary>
     public static class CacheManager
     {
         /// <summary>
-        /// The _thread
+        ///     The _thread
         /// </summary>
         private static Thread _thread;
+
         /// <summary>
-        /// The working
+        ///     The working
         /// </summary>
         public static bool Working;
 
         /// <summary>
-        /// Starts the process.
+        ///     Starts the process.
         /// </summary>
         public static void StartProcess()
         {
-            _thread = new Thread(Process) { Name = "Cache Thread" };
+            _thread = new Thread(Process) {Name = "Cache Thread"};
 
             _thread.Start();
 
@@ -58,7 +60,7 @@ namespace Yupi.Data
         }
 
         /// <summary>
-        /// Stops the process.
+        ///     Stops the process.
         /// </summary>
         public static void StopProcess()
         {
@@ -67,7 +69,7 @@ namespace Yupi.Data
         }
 
         /// <summary>
-        /// Processes this instance.
+        ///     Processes this instance.
         /// </summary>
         private static void Process()
         {
@@ -84,17 +86,18 @@ namespace Yupi.Data
         }
 
         /// <summary>
-        /// Clears the user cache.
+        ///     Clears the user cache.
         /// </summary>
         private static void ClearUserCache()
         {
-            var toRemove = new List<uint>();
+            List<uint> toRemove = new List<uint>();
 
-            foreach (var user in Yupi.UsersCached)
+            foreach (KeyValuePair<uint, Habbo> user in Yupi.UsersCached)
             {
                 if (user.Value == null)
                 {
                     toRemove.Add(user.Key);
+
                     return;
                 }
 
@@ -107,31 +110,34 @@ namespace Yupi.Data
                 toRemove.Add(user.Key);
             }
 
-            foreach (var userId in toRemove)
+            foreach (uint userId in toRemove)
             {
-                Habbo nullHabbo;
+                Habbo nullHabbo; 
 
-                if (Yupi.UsersCached.TryRemove(userId, out nullHabbo))
-                    nullHabbo = null;
+                if (Yupi.UsersCached.ContainsKey(userId))
+                    Yupi.UsersCached.TryRemove(userId, out nullHabbo);
             }
         }
 
         /// <summary>
-        /// Clears the rooms cache.
+        ///     Clears the rooms cache.
         /// </summary>
         private static void ClearRoomsCache()
         {
             if (Yupi.GetGame() == null || Yupi.GetGame().GetRoomManager() == null || Yupi.GetGame().GetRoomManager().LoadedRoomData == null)
                 return;
 
-            var toRemove = (from roomData in Yupi.GetGame().GetRoomManager().LoadedRoomData where roomData.Value != null && roomData.Value.UsersNow <= 0 where !((DateTime.Now - roomData.Value.LastUsed).TotalMilliseconds < 1800000) select roomData.Key).ToList();
+            List<uint> toRemove = (from roomData in Yupi.GetGame().GetRoomManager().LoadedRoomData
+                where roomData.Value != null && roomData.Value.UsersNow <= 0
+                where !((DateTime.Now - roomData.Value.LastUsed).TotalMilliseconds < 1800000)
+                select roomData.Key).ToList();
 
-            foreach (var roomId in toRemove)
+            foreach (uint roomId in toRemove)
             {
                 RoomData nullRoom;
 
-                if (Yupi.GetGame().GetRoomManager().LoadedRoomData.TryRemove(roomId, out nullRoom))
-                    nullRoom = null;
+                if (Yupi.GetGame().GetRoomManager().LoadedRoomData.ContainsKey(roomId))
+                    Yupi.GetGame().GetRoomManager().LoadedRoomData.TryRemove(roomId, out nullRoom);
             }
         }
     }

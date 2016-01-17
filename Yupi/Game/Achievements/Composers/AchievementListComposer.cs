@@ -1,3 +1,27 @@
+/**
+     Because i love chocolat...                                      
+                                    88 88  
+                                    "" 88  
+                                       88  
+8b       d8 88       88 8b,dPPYba,  88 88  
+`8b     d8' 88       88 88P'    "8a 88 88  
+ `8b   d8'  88       88 88       d8 88 ""  
+  `8b,d8'   "8a,   ,a88 88b,   ,a8" 88 aa  
+    Y88'     `"YbbdP'Y8 88`YbbdP"'  88 88  
+    d8'                 88                 
+   d8'                  88     
+   
+   Private Habbo Hotel Emulating System
+   @author Claudio A. Santoro W.
+   @author Kessiler R.
+   @version dev-beta
+   @license MIT
+   @copyright Sulake Corporation Oy
+   @observation All Rights of Habbo, Habbo Hotel, and all Habbo contents and it's names, is copyright from Sulake
+   Corporation Oy. Yupi! has nothing linked with Sulake. 
+   This Emulator is Only for DEVELOPMENT uses. If you're selling this you're violating Sulakes Copyright.
+*/
+
 using System.Collections.Generic;
 using Yupi.Game.Achievements.Structs;
 using Yupi.Game.GameClients.Interfaces;
@@ -19,7 +43,7 @@ namespace Yupi.Game.Achievements.Composers
         /// <returns>ServerMessage.</returns>
         internal static ServerMessage Compose(GameClient session, List<Achievement> achievements)
         {
-            var serverMessage = new ServerMessage(LibraryParser.OutgoingRequest("AchievementListMessageComposer"));
+            ServerMessage serverMessage = new ServerMessage(LibraryParser.OutgoingRequest("AchievementListMessageComposer"));
 
             serverMessage.AppendInteger(achievements.Count);
 
@@ -27,16 +51,16 @@ namespace Yupi.Game.Achievements.Composers
             {
                 UserAchievement achievementData = session.GetHabbo().GetAchievementData(achievement.GroupName);
 
-                int i = achievementData?.Level + 1 ?? 1;
+                uint i = achievementData?.Level + 1 ?? 1;
 
-                int count = achievement.Levels.Count;
+                uint count = (uint) achievement.Levels.Count;
 
                 if (i > count)
                     i = count;
 
                 AchievementLevel achievementLevel = achievement.Levels[i];
 
-                AchievementLevel oldLevel = (achievement.Levels.ContainsKey(i - 1)) ? achievement.Levels[i - 1] : achievementLevel;
+                AchievementLevel oldLevel = achievement.Levels.ContainsKey(i - 1) ? achievement.Levels[i - 1] : achievementLevel;
 
                 serverMessage.AppendInteger(achievement.Id);
                 serverMessage.AppendInteger(i);
