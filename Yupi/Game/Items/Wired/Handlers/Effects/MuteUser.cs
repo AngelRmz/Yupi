@@ -44,9 +44,10 @@ namespace Yupi.Game.Items.Wired.Handlers.Effects
 
         public bool Execute(params object[] stuff)
         {
-            var roomUser = (RoomUser) stuff[0];
+            RoomUser roomUser = (RoomUser) stuff[0];
 
-            if (roomUser == null || roomUser.IsBot || roomUser.GetClient() == null || roomUser.GetClient().GetHabbo() == null)
+            if (roomUser == null || roomUser.IsBot || roomUser.GetClient() == null ||
+                roomUser.GetClient().GetHabbo() == null)
                 return false;
 
             if (roomUser.GetClient().GetHabbo().Rank > 3)
@@ -55,14 +56,14 @@ namespace Yupi.Game.Items.Wired.Handlers.Effects
             if (Delay == 0)
                 return false;
 
-            var minutes = Delay / 500;
+            int minutes = Delay/500;
 
-            var userId = roomUser.GetClient().GetHabbo().Id;
+            uint userId = roomUser.GetClient().GetHabbo().Id;
 
             if (Room.MutedUsers.ContainsKey(userId))
                 Room.MutedUsers.Remove(userId);
 
-            Room.MutedUsers.Add(userId, Convert.ToUInt32((Yupi.GetUnixTimeStamp() + (minutes * 60))));
+            Room.MutedUsers.Add(userId, Convert.ToUInt32(Yupi.GetUnixTimeStamp() + minutes*60));
 
             if (!string.IsNullOrEmpty(OtherString))
                 roomUser.GetClient().SendWhisper(OtherString);

@@ -21,7 +21,7 @@ namespace Yupi.Game.Commands.Controllers
 
         public override bool Execute(GameClient session, string[] pms)
         {
-            var client = Yupi.GetGame().GetClientManager().GetClientByUserName(pms[0]);
+            GameClient client = Yupi.GetGame().GetClientManager().GetClientByUserName(pms[0]);
             if (client == null)
             {
                 session.SendNotif(Yupi.GetLanguage().GetVar("user_not_found"));
@@ -37,7 +37,7 @@ namespace Yupi.Game.Commands.Controllers
             Yupi.GetGame()
                 .GetModerationTool()
                 .LogStaffEntry(session.GetHabbo().UserName, client.GetHabbo().UserName,
-                    "Badge Taken", string.Format("Badge taken from user [{0}]", pms[1]));
+                    "Badge Taken", $"Badge taken from user [{pms[1]}]");
             return true;
         }
     }

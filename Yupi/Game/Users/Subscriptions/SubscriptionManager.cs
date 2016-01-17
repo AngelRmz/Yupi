@@ -1,4 +1,7 @@
 using System;
+using System.Data;
+using Yupi.Data.Base.Adapters.Interfaces;
+using Yupi.Game.GameClients.Interfaces;
 using Yupi.Game.Users.Data.Models;
 
 namespace Yupi.Game.Users.Subscriptions
@@ -50,9 +53,9 @@ namespace Yupi.Game.Users.Subscriptions
         /// <param name="dayLength">Length of the day.</param>
         internal void AddSubscription(double dayLength)
         {
-            var num = ((int) Math.Round(dayLength));
+            int num = (int) Math.Round(dayLength);
 
-            var clientByUserId = Yupi.GetGame().GetClientManager().GetClientByUserId(_userId);
+            GameClient clientByUserId = Yupi.GetGame().GetClientManager().GetClientByUserId(_userId);
             DateTime target;
             int num2;
             int num3;
@@ -70,11 +73,12 @@ namespace Yupi.Game.Users.Subscriptions
                 num3 = Yupi.GetUnixTimeStamp();
             }
 
-            var num4 = Yupi.DateTimeToUnix(target);
+            int num4 = Yupi.DateTimeToUnix(target);
             _subscription = new Subscription(2, num2, num4, num3);
 
-            using (var queryReactor = Yupi.GetDatabaseManager().GetQueryReactor())
-                queryReactor.RunFastQuery(string.Concat("REPLACE INTO users_subscriptions VALUES (", _userId, ", 2, ",
+            using (IQueryAdapter commitableQueryReactor = Yupi.GetDatabaseManager().GetQueryReactor())
+                commitableQueryReactor.RunFastQuery(string.Concat("REPLACE INTO users_subscriptions VALUES (", _userId,
+                    ", 2, ",
                     num2, ", ", num4, ", ", num3, ");"));
 
             clientByUserId.GetHabbo().SerializeClub();
@@ -86,13 +90,13 @@ namespace Yupi.Game.Users.Subscriptions
         /// </summary>
         internal void ReloadSubscription()
         {
-            using (var queryReactor = Yupi.GetDatabaseManager().GetQueryReactor())
+            using (IQueryAdapter commitableQueryReactor = Yupi.GetDatabaseManager().GetQueryReactor())
             {
-                queryReactor.SetQuery(
+                commitableQueryReactor.SetQuery(
                     "SELECT * FROM users_subscriptions WHERE user_id=@id AND timestamp_expire > UNIX_TIMESTAMP() ORDER BY subscription_id DESC LIMIT 1");
-                queryReactor.AddParameter("id", _userId);
+                commitableQueryReactor.AddParameter("id", _userId);
 
-                var row = queryReactor.GetRow();
+                DataRow row = commitableQueryReactor.GetRow();
 
                 _subscription = row == null
                     ? null

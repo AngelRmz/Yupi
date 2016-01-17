@@ -1,6 +1,6 @@
 using System;
 using System.Globalization;
-using Yupi.Core.Io;
+using Yupi.Data;
 using Yupi.Game.Rooms.Chat.Enums;
 
 namespace Yupi.Game.Rooms
@@ -98,7 +98,8 @@ namespace Yupi.Game.Rooms
         /// <param name="staticFurniMap">The static furni map.</param>
         /// <param name="clubOnly">if set to <c>true</c> [club only].</param>
         /// <param name="poolmap">The poolmap.</param>
-        internal RoomModel(int doorX, int doorY, double doorZ, int doorOrientation, string heightmap, string staticFurniMap, bool clubOnly, string poolmap)
+        internal RoomModel(int doorX, int doorY, double doorZ, int doorOrientation, string heightmap,
+            string staticFurniMap, bool clubOnly, string poolmap)
         {
             try
             {
@@ -113,7 +114,7 @@ namespace Yupi.Game.Rooms
 
                 heightmap = heightmap.Replace($"{Convert.ToChar(10)}", string.Empty);
 
-                var array = heightmap.Split(Convert.ToChar(13));
+                string[] array = heightmap.Split(Convert.ToChar(13));
 
                 MapSizeX = array[0].Length;
                 MapSizeY = array.Length;
@@ -121,42 +122,43 @@ namespace Yupi.Game.Rooms
 
                 SqState = new SquareState[MapSizeX][];
 
-                for (var i = 0; i < MapSizeX; i++)
+                for (int i = 0; i < MapSizeX; i++)
                     SqState[i] = new SquareState[MapSizeY];
 
                 SqFloorHeight = new short[MapSizeX][];
 
-                for (var i = 0; i < MapSizeX; i++)
+                for (int i = 0; i < MapSizeX; i++)
                     SqFloorHeight[i] = new short[MapSizeY];
 
                 SqSeatRot = new byte[MapSizeX][];
 
-                for (var i = 0; i < MapSizeX; i++)
+                for (int i = 0; i < MapSizeX; i++)
                     SqSeatRot[i] = new byte[MapSizeY];
 
                 SqChar = new char[MapSizeX][];
 
-                for (var i = 0; i < MapSizeX; i++)
+                for (int i = 0; i < MapSizeX; i++)
                     SqChar[i] = new char[MapSizeY];
 
                 if (GotPublicPool)
                 {
                     MRoomModelfx = new byte[MapSizeX][];
 
-                    for (var i = 0; i < MapSizeX; i++)
+                    for (int i = 0; i < MapSizeX; i++)
                         MRoomModelfx[i] = new byte[MapSizeY];
                 }
 
-                for (var y = 0; y < MapSizeY; y++)
+                for (int y = 0; y < MapSizeY; y++)
                 {
-                    var text2 = array[y].Replace($"{Convert.ToChar(13)}", string.Empty).Replace($"{Convert.ToChar(10)}", string.Empty);
+                    string text2 = array[y].Replace($"{Convert.ToChar(13)}", string.Empty)
+                        .Replace($"{Convert.ToChar(10)}", string.Empty);
 
-                    for (var x = 0; x < MapSizeX; x++)
+                    for (int x = 0; x < MapSizeX; x++)
                     {
                         char c = 'x';
 
-                        if(x < text2.Length)
-                            c = (char)text2[x];
+                        if (x < text2.Length)
+                            c = text2[x];
 
                         if (x == doorX && y == doorY)
                         {
@@ -164,7 +166,7 @@ namespace Yupi.Game.Rooms
                             SqState[x][y] = SquareState.Open;
 
                             if (SqFloorHeight[x][y] > 9)
-                                SqChar[x][y] = Letters[(SqFloorHeight[x][y] - 10)];
+                                SqChar[x][y] = Letters[SqFloorHeight[x][y] - 10];
                             else
                                 SqChar[x][y] = char.Parse(DoorZ.ToString(CultureInfo.InvariantCulture));
                         }
@@ -190,7 +192,7 @@ namespace Yupi.Game.Rooms
             }
             catch (Exception e)
             {
-                Writer.LogCriticalException(e.ToString());
+                ServerLogManager.LogCriticalException(e.ToString());
             }
         }
     }

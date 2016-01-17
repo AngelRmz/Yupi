@@ -56,12 +56,13 @@ namespace Yupi.Game.Items.Wired.Handlers.Conditions
 
         public bool Execute(params object[] stuff)
         {
-            var roomUser = stuff?[0] as RoomUser;
+            RoomUser roomUser = stuff?[0] as RoomUser;
 
             if (roomUser == null)
                 return false;
 
-            return Room.RoomData.Group != null && Room.RoomData.Group.Members.ContainsKey(roomUser.GetClient().GetHabbo().Id);
+            return Room.RoomData.Group != null &&
+                   Room.RoomData.Group.Members.ContainsKey(roomUser.GetClient().GetHabbo().Id);
         }
     }
 }

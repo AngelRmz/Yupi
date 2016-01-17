@@ -1,9 +1,30 @@
-﻿#region
+﻿/**
+     Because i love chocolat...                                      
+                                    88 88  
+                                    "" 88  
+                                       88  
+8b       d8 88       88 8b,dPPYba,  88 88  
+`8b     d8' 88       88 88P'    "8a 88 88  
+ `8b   d8'  88       88 88       d8 88 ""  
+  `8b,d8'   "8a,   ,a88 88b,   ,a8" 88 aa  
+    Y88'     `"YbbdP'Y8 88`YbbdP"'  88 88  
+    d8'                 88                 
+   d8'                  88     
+   
+   Private Habbo Hotel Emulating System
+   @author Claudio A. Santoro W.
+   @author Kessiler R.
+   @version dev-beta
+   @license MIT
+   @copyright Sulake Corporation Oy
+   @observation All Rights of Habbo, Habbo Hotel, and all Habbo contents and it's names, is copyright from Sulake
+   Corporation Oy. Yupi! has nothing linked with Sulake. 
+   This Emulator is Only for DEVELOPMENT uses. If you're selling this you're violating Sulakes Copyright.
+*/
 
 using System.Collections.Generic;
 using System.Linq;
-
-#endregion
+using Yupi.Core.Algorithms.Astar.Interfaces;
 
 namespace Yupi.Core.Algorithms.Astar
 {
@@ -29,9 +50,8 @@ namespace Yupi.Core.Algorithms.Astar
 
             while (low <= high)
             {
-                var midpoint = (low + high) / 2;
+                int midpoint = (low + high)/2;
 
-                // check to see if value is equal to item in array
                 if (MComparer.Compare(value, InnerList[midpoint]) == 0)
                     return midpoint;
                 if (MComparer.Compare(value, InnerList[midpoint]) == -1)
@@ -40,31 +60,35 @@ namespace Yupi.Core.Algorithms.Astar
                     low = midpoint + 1;
             }
 
-            // item was not found
             return low;
         }
 
         /// <summary>
-        /// Push an object onto the PQ
+        ///     Push an object onto the PQ
         /// </summary>
         /// <param name="item">The new object</param>
-        /// <returns>The index in the list where the object is _now_. This will change when objects are taken from or put onto the PQ.</returns>
+        /// <returns>
+        ///     The index in the list where the object is _now_. This will change when objects are taken from or put onto the
+        ///     PQ.
+        /// </returns>
         public void Push(T item)
         {
-            var location = BinarySearch(item);
+            int location = BinarySearch(item);
             InnerList.Insert(location, item);
         }
 
         /// <summary>
-        /// Get the smallest object and remove it.
+        ///     Get the smallest object and remove it.
         /// </summary>
         /// <returns>The smallest object</returns>
         public T Pop()
         {
             if (!InnerList.Any())
                 return default(T);
-            var item = InnerList[0];
+
+            T item = InnerList[0];
             InnerList.RemoveAt(0);
+
             return item;
         }
 

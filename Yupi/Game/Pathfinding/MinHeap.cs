@@ -1,3 +1,27 @@
+/**
+     Because i love chocolat...                                      
+                                    88 88  
+                                    "" 88  
+                                       88  
+8b       d8 88       88 8b,dPPYba,  88 88  
+`8b     d8' 88       88 88P'    "8a 88 88  
+ `8b   d8'  88       88 88       d8 88 ""  
+  `8b,d8'   "8a,   ,a88 88b,   ,a8" 88 aa  
+    Y88'     `"YbbdP'Y8 88`YbbdP"'  88 88  
+    d8'                 88                 
+   d8'                  88     
+   
+   Private Habbo Hotel Emulating System
+   @author Claudio A. Santoro W.
+   @author Kessiler R.
+   @version dev-beta
+   @license MIT
+   @copyright Sulake Corporation Oy
+   @observation All Rights of Habbo, Habbo Hotel, and all Habbo contents and it's names, is copyright from Sulake
+   Corporation Oy. Yupi! has nothing linked with Sulake. 
+   This Emulator is Only for DEVELOPMENT uses. If you're selling this you're violating Sulakes Copyright.
+*/
+
 using System;
 using System.Collections.Generic;
 
@@ -47,7 +71,6 @@ namespace Yupi.Game.Pathfinding
         /// <param name="capacity">The capacity.</param>
         public MinHeap(int capacity)
         {
-            Count = 0;
             _capacity = capacity;
             _array = new T[capacity];
         }
@@ -63,7 +86,7 @@ namespace Yupi.Game.Pathfinding
         /// </summary>
         public void BuildHead()
         {
-            for (var i = Count - 1 >> 1; i >= 0; i--)
+            for (int i = Count - 1 >> 1; i >= 0; i--)
                 MinHeapify(i);
         }
 
@@ -80,8 +103,8 @@ namespace Yupi.Game.Pathfinding
 
             _array[Count - 1] = item;
 
-            var num = Count - 1;
-            var num2 = num - 1 >> 1;
+            int num = Count - 1;
+            int num2 = num - 1 >> 1;
 
             while (num > 0 && _array[num2].CompareTo(_array[num]) > 0)
             {
@@ -132,7 +155,7 @@ namespace Yupi.Game.Pathfinding
         /// <param name="destination">The destination.</param>
         private static void CopyArray(IList<T> source, IList<T> destination)
         {
-            for (var i = 0; i < source.Count; i++)
+            for (int i = 0; i < source.Count; i++)
                 destination[i] = source[i];
         }
 
@@ -155,8 +178,8 @@ namespace Yupi.Game.Pathfinding
         {
             while (true)
             {
-                var num = (position << 1) + 1;
-                var num2 = num + 1;
+                int num = (position << 1) + 1;
+                int num2 = num + 1;
                 int num3;
 
                 if (num < Count && _array[num].CompareTo(_array[position]) < 0)

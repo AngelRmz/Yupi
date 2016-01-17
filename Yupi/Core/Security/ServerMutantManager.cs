@@ -1,3 +1,27 @@
+/**
+     Because i love chocolat...                                      
+                                    88 88  
+                                    "" 88  
+                                       88  
+8b       d8 88       88 8b,dPPYba,  88 88  
+`8b     d8' 88       88 88P'    "8a 88 88  
+ `8b   d8'  88       88 88       d8 88 ""  
+  `8b,d8'   "8a,   ,a88 88b,   ,a8" 88 aa  
+    Y88'     `"YbbdP'Y8 88`YbbdP"'  88 88  
+    d8'                 88                 
+   d8'                  88     
+   
+   Private Habbo Hotel Emulating System
+   @author Claudio A. Santoro W.
+   @author Kessiler R.
+   @version dev-beta
+   @license MIT
+   @copyright Sulake Corporation Oy
+   @observation All Rights of Habbo, Habbo Hotel, and all Habbo contents and it's names, is copyright from Sulake
+   Corporation Oy. Yupi! has nothing linked with Sulake. 
+   This Emulator is Only for DEVELOPMENT uses. If you're selling this you're violating Sulakes Copyright.
+*/
+
 using System.Collections.Generic;
 using System.Linq;
 using Yupi.Game.Users.Figures;
@@ -29,24 +53,24 @@ namespace Yupi.Core.Security
         /// <returns>System.String.</returns>
         internal string RunLook(string look)
         {
-            var toReturnFigureParts = new List<string>();
-            var fParts = new List<string>();
+            List<string> toReturnFigureParts = new List<string>();
+            List<string> fParts = new List<string>();
             string[] requiredParts = {"hd", "ch"};
-            var flagForDefault = false;
+            bool flagForDefault = false;
 
-            var figureParts = look.Split('.');
-            var genderLook = GetLookGender(look);
-            foreach (var part in figureParts)
+            string[] figureParts = look.Split('.');
+            string genderLook = GetLookGender(look);
+            foreach (string part in figureParts)
             {
-                var newPart = part;
-                var tPart = part.Split('-');
+                string newPart = part;
+                string[] tPart = part.Split('-');
                 if (tPart.Count() < 2)
                 {
                     flagForDefault = true;
                     continue;
                 }
-                var partName = tPart[0];
-                var partId = tPart[1];
+                string partName = tPart[0];
+                string partId = tPart[1];
                 if (!_parts.ContainsKey(partName) || !_parts[partName].ContainsKey(partId) ||
                     (genderLook != "U" && _parts[partName][partId].Gender != "U" &&
                      _parts[partName][partId].Gender != genderLook))
@@ -63,7 +87,7 @@ namespace Yupi.Core.Security
                 toReturnFigureParts.AddRange("hr-115-42.hd-190-1.ch-215-62.lg-285-91.sh-290-62".Split('.'));
             }
 
-            foreach (var requiredPart in requiredParts.Where(requiredPart => !fParts.Contains(requiredPart) &&
+            foreach (string requiredPart in requiredParts.Where(requiredPart => !fParts.Contains(requiredPart) &&
                                                                              !toReturnFigureParts.Contains(
                                                                                  SetDefault(requiredPart, genderLook)))
                 )
@@ -78,15 +102,15 @@ namespace Yupi.Core.Security
         /// <returns>System.String.</returns>
         private string GetLookGender(string look)
         {
-            var figureParts = look.Split('.');
+            string[] figureParts = look.Split('.');
 
-            foreach (var part in figureParts)
+            foreach (string part in figureParts)
             {
-                var tPart = part.Split('-');
+                string[] tPart = part.Split('-');
                 if (tPart.Count() < 2)
                     continue;
-                var partName = tPart[0];
-                var partId = tPart[1];
+                string partName = tPart[0];
+                string partId = tPart[1];
                 if (partName != "hd")
                     continue;
                 return _parts.ContainsKey(partName) && _parts[partName].ContainsKey(partId)
@@ -104,12 +128,12 @@ namespace Yupi.Core.Security
         /// <returns>System.String.</returns>
         private string SetDefault(string partName, string gender)
         {
-            var partId = "0";
+            string partId = "0";
             if (!_parts.ContainsKey(partName))
-                return string.Format("{0}-{1}-0", partName, partId);
-            var part = _parts[partName].FirstOrDefault(x => x.Value.Gender == gender || gender == "U");
+                return $"{partName}-{partId}-0";
+            KeyValuePair<string, AvatarFigureParts> part = _parts[partName].FirstOrDefault(x => x.Value.Gender == gender || gender == "U");
             partId = part.Equals(default(KeyValuePair<string, AvatarFigureParts>)) ? "0" : part.Key;
-            return string.Format("{0}-{1}-0", partName, partId);
+            return $"{partName}-{partId}-0";
         }
     }
 }

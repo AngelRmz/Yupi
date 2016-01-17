@@ -1,5 +1,30 @@
+/**
+     Because i love chocolat...                                      
+                                    88 88  
+                                    "" 88  
+                                       88  
+8b       d8 88       88 8b,dPPYba,  88 88  
+`8b     d8' 88       88 88P'    "8a 88 88  
+ `8b   d8'  88       88 88       d8 88 ""  
+  `8b,d8'   "8a,   ,a88 88b,   ,a8" 88 aa  
+    Y88'     `"YbbdP'Y8 88`YbbdP"'  88 88  
+    d8'                 88                 
+   d8'                  88     
+   
+   Private Habbo Hotel Emulating System
+   @author Claudio A. Santoro W.
+   @author Kessiler R.
+   @version dev-beta
+   @license MIT
+   @copyright Sulake Corporation Oy
+   @observation All Rights of Habbo, Habbo Hotel, and all Habbo contents and it's names, is copyright from Sulake
+   Corporation Oy. Yupi! has nothing linked with Sulake. 
+   This Emulator is Only for DEVELOPMENT uses. If you're selling this you're violating Sulakes Copyright.
+*/
+
 using System;
 using System.Data;
+using Yupi.Data.Base.Adapters.Interfaces;
 using Yupi.Game.Pets.Enums;
 
 namespace Yupi.Game.Pets
@@ -63,7 +88,8 @@ namespace Yupi.Game.Pets
         /// <param name="breedData">The breed data.</param>
         /// <param name="liveState">State of the live.</param>
         /// <param name="growingStatus">The growing status.</param>
-        internal MoplaBreed(Pet pet, uint petId, int rarity, string moplaName, string breedData, int liveState, int growingStatus)
+        internal MoplaBreed(Pet pet, uint petId, int rarity, string moplaName, string breedData, int liveState,
+            int growingStatus)
         {
             _pet = pet;
             _petId = petId;
@@ -78,7 +104,8 @@ namespace Yupi.Game.Pets
         ///     Gets the grow status.
         /// </summary>
         /// <value>The grow status.</value>
-        internal string GrowStatus => LiveState == MoplaState.Dead ? "rip" : (LiveState == MoplaState.Grown ? "std" : $"grw{GrowingStatus}");
+        internal string GrowStatus
+            => LiveState == MoplaState.Dead ? "rip" : (LiveState == MoplaState.Grown ? "std" : $"grw{GrowingStatus}");
 
         /// <summary>
         ///     Gets the name.
@@ -99,15 +126,16 @@ namespace Yupi.Game.Pets
         /// <returns>MoplaBreed.</returns>
         internal static MoplaBreed CreateMonsterplantBreed(Pet pet)
         {
-            if (pet.Type != 16)
+            if (pet.Type != "pet_monster")
                 return null;
 
-            var tuple = GeneratePlantData(pet.Rarity);
-            var breed = new MoplaBreed(pet, pet.PetId, pet.Rarity, tuple.Item1, tuple.Item2, 0, 1);
+            Tuple<string, string> tuple = GeneratePlantData(pet.Rarity);
+            MoplaBreed breed = new MoplaBreed(pet, pet.PetId, pet.Rarity, tuple.Item1, tuple.Item2, 0, 1);
 
-            using (var adapter = Yupi.GetDatabaseManager().GetQueryReactor())
+            using (IQueryAdapter adapter = Yupi.GetDatabaseManager().GetQueryReactor())
             {
-                adapter.SetQuery("INSERT INTO pets_plants (pet_id, rarity, plant_name, plant_data) VALUES (@petid , @rarity , @plantname , @plantdata)");
+                adapter.SetQuery(
+                    "INSERT INTO pets_plants (pet_id, rarity, plant_name, plant_data) VALUES (@petid , @rarity , @plantname , @plantdata)");
                 adapter.AddParameter("petid", pet.PetId);
                 adapter.AddParameter("rarity", pet.Rarity);
                 adapter.AddParameter("plantname", tuple.Item1);
@@ -125,17 +153,17 @@ namespace Yupi.Game.Pets
         /// <returns>Tuple&lt;System.String, System.String&gt;.</returns>
         internal static Tuple<string, string> GeneratePlantData(int rarity)
         {
-            var str = string.Empty;
+            string str = string.Empty;
 
             int num;
             int num2;
 
-            var random = new Random();
+            Random random = new Random();
 
             switch (rarity)
             {
                 case 1:
-                    if ((random.Next(0, 4)%2) != 0)
+                    if (random.Next(0, 4)%2 != 0)
                     {
                         if (random.Next(0, 2) == 0)
                         {
@@ -168,7 +196,7 @@ namespace Yupi.Game.Pets
                     break;
 
                 case 2:
-                    if ((random.Next(0, 4)%2) != 0)
+                    if (random.Next(0, 4)%2 != 0)
                     {
                         if (random.Next(0, 2) == 0)
                         {
@@ -180,7 +208,6 @@ namespace Yupi.Game.Pets
                             num = 2;
                             str = $"{str}Phoenicus ";
                         }
-
                     }
                     else
                     {
@@ -202,7 +229,7 @@ namespace Yupi.Game.Pets
                     break;
 
                 case 3:
-                    if ((random.Next(0, 4)%2) != 0)
+                    if (random.Next(0, 4)%2 != 0)
                     {
                         if (random.Next(0, 7) == 5)
                         {
@@ -231,7 +258,7 @@ namespace Yupi.Game.Pets
                         num2 = 2;
                         str = $"{str}Wailzor";
                     }
-                    else if ((random.Next(0, 5)%2) == 0)
+                    else if (random.Next(0, 5)%2 == 0)
                     {
                         num2 = 6;
                         str = $"{str}Shroomer";
@@ -245,7 +272,7 @@ namespace Yupi.Game.Pets
                     break;
 
                 case 4:
-                    if ((random.Next(0, 4)%2) != 0)
+                    if (random.Next(0, 4)%2 != 0)
                     {
                         if (random.Next(0, 7) == 5)
                         {
@@ -262,7 +289,7 @@ namespace Yupi.Game.Pets
                             num = 10;
                             str = $"{str}Cinereus ";
                         }
-                        else if (random.Next(0, 7) % 2 != 0)
+                        else if (random.Next(0, 7)%2 != 0)
                         {
                             num = 8;
                             str = $"{str}Amethyst ";
@@ -284,7 +311,7 @@ namespace Yupi.Game.Pets
                         num2 = 7;
                         str = $"{str}Zuchinu";
                     }
-                    else if ((random.Next(0, 5)%2) == 0)
+                    else if (random.Next(0, 5)%2 == 0)
                     {
                         num2 = 6;
                         str = $"{str}Shroomer";
@@ -298,7 +325,7 @@ namespace Yupi.Game.Pets
                     break;
 
                 case 5:
-                    if ((random.Next(0, 4)%2) != 0)
+                    if (random.Next(0, 4)%2 != 0)
                     {
                         if (random.Next(0, 7) == 5)
                         {
@@ -327,7 +354,7 @@ namespace Yupi.Game.Pets
                         num2 = 7;
                         str = $"{str}Zuchinu";
                     }
-                    else if ((random.Next(0, 5)%2) == 2)
+                    else if (random.Next(0, 5)%2 == 2)
                     {
                         num2 = 11;
                         str = $"{str}Hairbullis";
@@ -341,7 +368,7 @@ namespace Yupi.Game.Pets
                     break;
 
                 case 6:
-                    if ((random.Next(0, 4)%2) != 0)
+                    if (random.Next(0, 4)%2 != 0)
                     {
                         if (random.Next(0, 7) == 5)
                         {
@@ -370,7 +397,7 @@ namespace Yupi.Game.Pets
                         num2 = 10;
                         str = $"{str}Wystique";
                     }
-                    else if ((random.Next(0, 5)%2) == 2)
+                    else if (random.Next(0, 5)%2 == 2)
                     {
                         num2 = 11;
                         str = $"{str}Hairbullis";
@@ -384,7 +411,7 @@ namespace Yupi.Game.Pets
                     break;
 
                 case 7:
-                    if ((random.Next(0, 4)%2) != 0)
+                    if (random.Next(0, 4)%2 != 0)
                     {
                         if (random.Next(0, 7) == 5)
                         {
@@ -413,7 +440,7 @@ namespace Yupi.Game.Pets
                         num2 = 2;
                         str = $"{str}Wailzor";
                     }
-                    else if ((random.Next(0, 5)%2) == 2)
+                    else if (random.Next(0, 5)%2 == 2)
                     {
                         num2 = 4;
                         str = $"{str}Sunspike";
@@ -432,7 +459,7 @@ namespace Yupi.Game.Pets
                     break;
 
                 case 8:
-                    if ((random.Next(0, 4)%2) != 0)
+                    if (random.Next(0, 4)%2 != 0)
                     {
                         if (random.Next(0, 7) == 5)
                         {
@@ -444,7 +471,7 @@ namespace Yupi.Game.Pets
                             num = 10;
                             str = $"{str}Cinereus ";
                         }
-                        else if ((random.Next(12, 0x13) % 2) == 1)
+                        else if (random.Next(12, 0x13)%2 == 1)
                         {
                             num = 6;
                             str = $"{str}Azureus ";
@@ -466,7 +493,7 @@ namespace Yupi.Game.Pets
                         num2 = 11;
                         str = $"{str}Hairbullis";
                     }
-                    else if ((random.Next(0, 5)%2) == 2)
+                    else if (random.Next(0, 5)%2 == 2)
                     {
                         num2 = 10;
                         str = $"{str}Wystique";
@@ -485,7 +512,7 @@ namespace Yupi.Game.Pets
                     break;
 
                 case 9:
-                    if ((random.Next(0, 4)%2) != 0)
+                    if (random.Next(0, 4)%2 != 0)
                     {
                         if (random.Next(0, 7) == 5)
                         {
@@ -509,7 +536,7 @@ namespace Yupi.Game.Pets
                         num2 = 11;
                         str = $"{str}Hairbullis";
                     }
-                    else if ((random.Next(0, 5)%2) == 2)
+                    else if (random.Next(0, 5)%2 == 2)
                     {
                         num2 = 10;
                         str = $"{str}Wystique";
@@ -537,7 +564,7 @@ namespace Yupi.Game.Pets
                     break;
 
                 default:
-                    if ((random.Next(0, 4)%2) == 0)
+                    if (random.Next(0, 4)%2 == 0)
                     {
                         num = 9;
                         str = $"{str}Fulvus ";
@@ -583,14 +610,14 @@ namespace Yupi.Game.Pets
             if (LiveState != 0)
                 return;
 
-            var span = lastHealth - DateTime.Now;
+            TimeSpan span = lastHealth - DateTime.Now;
 
             if (span.TotalSeconds <= 0)
                 KillPlant();
 
             else if (GrowingStatus != 7)
             {
-                var span2 = untilGrown - DateTime.Now;
+                TimeSpan span2 = untilGrown - DateTime.Now;
 
                 if (span2.TotalSeconds <= 10 && GrowingStatus == 6)
                 {
@@ -649,7 +676,7 @@ namespace Yupi.Game.Pets
 
         internal void UpdateInDb()
         {
-            using (var adapter = Yupi.GetDatabaseManager().GetQueryReactor())
+            using (IQueryAdapter adapter = Yupi.GetDatabaseManager().GetQueryReactor())
             {
                 adapter.SetQuery(
                     "REPLACE INTO pets_plants (pet_id, rarity, plant_name, plant_data, plant_state, growing_status) VALUES (@petid , @rarity , @plantname , @plantdata , @plantstate , @growing)");

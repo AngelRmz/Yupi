@@ -1,6 +1,9 @@
-﻿using System.Text;
+﻿using System.Data;
+using System.Text;
+using Yupi.Data.Base.Adapters.Interfaces;
 using Yupi.Game.Commands.Interfaces;
 using Yupi.Game.GameClients.Interfaces;
+using Yupi.Game.Users;
 
 namespace Yupi.Game.Commands.Controllers
 {
@@ -22,30 +25,30 @@ namespace Yupi.Game.Commands.Controllers
 
         public override bool Execute(GameClient session, string[] pms)
         {
-            var userName = pms[0];
+            string userName = pms[0];
             if (string.IsNullOrEmpty(userName)) return true;
-            var clientByUserName = Yupi.GetGame().GetClientManager().GetClientByUserName(userName);
+            GameClient clientByUserName = Yupi.GetGame().GetClientManager().GetClientByUserName(userName);
             if (clientByUserName == null || clientByUserName.GetHabbo() == null)
             {
-                using (var adapter = Yupi.GetDatabaseManager().GetQueryReactor())
+                using (IQueryAdapter adapter = Yupi.GetDatabaseManager().GetQueryReactor())
                 {
                     adapter.SetQuery(
                         "SELECT username, rank, id, credits, activity_points, diamonds FROM users WHERE username=@user LIMIT 1");
                     adapter.AddParameter("user", userName);
-                    var row = adapter.GetRow();
+                    DataRow row = adapter.GetRow();
 
                     if (row == null)
                     {
                         session.SendWhisper(Yupi.GetLanguage().GetVar("user_not_found"));
                         return true;
                     }
-                    session.SendNotif(string.Format((Yupi.GetLanguage().GetVar("user_info_all")), userName, row[1],
+                    session.SendNotif(string.Format(Yupi.GetLanguage().GetVar("user_info_all"), userName, row[1],
                         row[3], row[4], row[5]));
                 }
                 return true;
             }
-            var habbo = clientByUserName.GetHabbo();
-            var builder = new StringBuilder();
+            Habbo habbo = clientByUserName.GetHabbo();
+            StringBuilder builder = new StringBuilder();
             if (habbo.CurrentRoom != null)
             {
                 builder.AppendFormat(" - ROOM INFORMATION [{0}] - \r", habbo.CurrentRoom.RoomId);
@@ -57,7 +60,7 @@ namespace Yupi.Game.Commands.Controllers
             }
             session.SendNotif(string.Concat("User info for: ", userName, " \rUser ID: ", habbo.Id, ":\rRank: ",
                 habbo.Rank, "\rCurrentTalentLevel: ", habbo.CurrentTalentLevel, " \rCurrent Room: ", habbo.CurrentRoomId,
-                " \rCredits: ", habbo.Credits, "\rDuckets: ", habbo.ActivityPoints, "\rDiamonds: ", habbo.Diamonds,
+                " \rCredits: ", habbo.Credits, "\rDuckets: ", habbo.Duckets, "\rDiamonds: ", habbo.Diamonds,
                 "\rMuted: ", habbo.Muted.ToString(), "\r\r\r", builder.ToString()));
 
             return true;

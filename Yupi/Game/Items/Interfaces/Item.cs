@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Yupi.Data.Base.Adapters.Interfaces;
 using Yupi.Game.Items.Interactions.Enums;
 
 namespace Yupi.Game.Items.Interfaces
@@ -36,12 +37,12 @@ namespace Yupi.Game.Items.Interfaces
         /// <summary>
         ///     The effect identifier
         /// </summary>
-        internal int EffectId;
+        internal uint EffectId;
 
         /// <summary>
         ///     The flat identifier
         /// </summary>
-        internal int FlatId;
+        internal uint FlatId;
 
         /// <summary>
         ///     The height
@@ -159,8 +160,8 @@ namespace Yupi.Game.Items.Interfaces
             double height, bool stackable, bool walkable, bool isSeat, bool allowRecycle, bool allowTrade,
             bool allowMarketplaceSell, bool allowGift, bool allowInventoryStack,
             Interaction interactionType,
-            uint modes, string vendingIds, bool sub, int effect, bool stackMultiple, double[] toggle,
-            int flatId)
+            uint modes, string vendingIds, bool sub, uint effect, bool stackMultiple, double[] toggle,
+            uint flatId)
         {
             ItemId = id;
             SpriteId = sprite;
@@ -188,7 +189,7 @@ namespace Yupi.Game.Items.Interfaces
             FlatId = flatId;
             IsGroupItem = Name.ToLower().ContainsAny("gld_", "guild_", "grp");
 
-            if (vendingIds.Contains(",")) foreach (var s in vendingIds.Split(',')) VendingIds.Add(int.Parse(s));
+            if (vendingIds.Contains(",")) foreach (string s in vendingIds.Split(',')) VendingIds.Add(int.Parse(s));
             else if (!vendingIds.Equals(string.Empty) && int.Parse(vendingIds) > 0)
                 VendingIds.Add(int.Parse(vendingIds));
         }
@@ -201,16 +202,16 @@ namespace Yupi.Game.Items.Interfaces
 
         public static void Save(uint id, bool stackable, bool allowTrade, double[] height, uint modes)
         {
-            using (var queryReacter = Yupi.GetDatabaseManager().GetQueryReactor())
+            using (IQueryAdapter commitableQueryReacter = Yupi.GetDatabaseManager().GetQueryReactor())
             {
-                queryReacter.SetQuery(
+                commitableQueryReacter.SetQuery(
                     "UPDATE LOW_PRIORITY catalog_furnitures SET stack_height = @height, can_stack = @stack, allow_trade = @trade, interaction_modes_count = @modes WHERE id = " +
                     id);
-                queryReacter.AddParameter("height", string.Join(";", height).Replace(',', '.'));
-                queryReacter.AddParameter("stack", stackable ? "1" : "0");
-                queryReacter.AddParameter("trade", allowTrade ? "1" : "0");
-                queryReacter.AddParameter("modes", modes);
-                queryReacter.RunQuery();
+                commitableQueryReacter.AddParameter("height", string.Join(";", height).Replace(',', '.'));
+                commitableQueryReacter.AddParameter("stack", stackable ? "1" : "0");
+                commitableQueryReacter.AddParameter("trade", allowTrade ? "1" : "0");
+                commitableQueryReacter.AddParameter("modes", modes);
+                commitableQueryReacter.RunQuery();
             }
         }
     }

@@ -23,9 +23,9 @@ namespace Yupi.Game.Commands.Controllers
 
         public override bool Execute(GameClient session, string[] pms)
         {
-            var msg = string.Join(" ", pms);
+            string msg = string.Join(" ", pms);
 
-            var message =
+            ServerMessage message =
                 new ServerMessage(LibraryParser.OutgoingRequest("SuperNotificationMessageComposer"));
             message.AppendString("staffcloud");
             message.AppendInteger(2);
@@ -33,14 +33,12 @@ namespace Yupi.Game.Commands.Controllers
             message.AppendString("Staff Internal Alert");
             message.AppendString("message");
             message.AppendString(
-                string.Format(
-                    "{0}\r\n- <i>Sender: {1}</i>",
-                    msg, session.GetHabbo().UserName));
+                $"{msg}\r\n- <i>Sender: {session.GetHabbo().UserName}</i>");
             Yupi.GetGame().GetClientManager().StaffAlert(message);
             Yupi.GetGame()
                 .GetModerationTool()
                 .LogStaffEntry(session.GetHabbo().UserName, string.Empty, "StaffAlert",
-                    string.Format("Staff alert [{0}]", msg));
+                    $"Staff alert [{msg}]");
 
             return true;
         }

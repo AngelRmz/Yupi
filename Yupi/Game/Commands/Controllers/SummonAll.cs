@@ -21,12 +21,11 @@ namespace Yupi.Game.Commands.Controllers
 
         public override bool Execute(GameClient session, string[] pms)
         {
-            var reason = string.Join(" ", pms);
+            string reason = string.Join(" ", pms);
 
-            var messageBytes =
-                GameClient.GetBytesNotif(string.Format("You have all been summoned by\r- {0}:\r\n{1}",
-                    session.GetHabbo().UserName, reason));
-            foreach (var client in Yupi.GetGame().GetClientManager().Clients.Values)
+            byte[] messageBytes =
+                GameClient.GetBytesNotif($"You have all been summoned by\r- {session.GetHabbo().UserName}:\r\n{reason}");
+            foreach (GameClient client in Yupi.GetGame().GetClientManager().Clients.Values)
             {
                 if (session.GetHabbo().CurrentRoom == null ||
                     session.GetHabbo().CurrentRoomId == client.GetHabbo().CurrentRoomId)

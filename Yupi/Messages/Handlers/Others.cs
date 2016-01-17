@@ -1,46 +1,52 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Data;
 using System.Globalization;
 using System.Linq;
+using System.Numerics;
 using Yupi.Core.Encryption;
 using Yupi.Core.Encryption.Hurlant.Crypto.Prng;
 using Yupi.Core.Encryption.Utils;
 using Yupi.Core.Settings;
+using Yupi.Data.Base.Adapters.Interfaces;
+using Yupi.Game.Catalogs.Interfaces;
 using Yupi.Game.GameClients.Interfaces;
-using Yupi.Game.Quests.Composers;
+using Yupi.Game.Items.Interfaces;
 using Yupi.Game.Rooms;
+using Yupi.Game.Rooms.Data;
+using Yupi.Game.Users;
 using Yupi.Messages.Parsers;
 using Yupi.Net.Web;
 
 namespace Yupi.Messages.Handlers
 {
     /// <summary>
-    /// Class GameClientMessageHandler.
+    ///     Class GameClientMessageHandler.
     /// </summary>
-    partial class GameClientMessageHandler
+    internal partial class GameClientMessageHandler
     {
         /// <summary>
-        /// The current loading room
+        ///     The current loading room
         /// </summary>
         internal Room CurrentLoadingRoom;
 
         /// <summary>
-        /// The session
-        /// </summary>
-        protected GameClient Session;
-
-        /// <summary>
-        /// The request
+        ///     The request
         /// </summary>
         protected ClientMessage Request;
 
         /// <summary>
-        /// The response
+        ///     The response
         /// </summary>
         protected ServerMessage Response;
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="GameClientMessageHandler"/> class.
+        ///     The session
+        /// </summary>
+        protected GameClient Session;
+
+        /// <summary>
+        ///     Initializes a new instance of the <see cref="GameClientMessageHandler" /> class.
         /// </summary>
         /// <param name="session">The session.</param>
         internal GameClientMessageHandler(GameClient session)
@@ -50,7 +56,7 @@ namespace Yupi.Messages.Handlers
         }
 
         /// <summary>
-        /// Gets the session.
+        ///     Gets the session.
         /// </summary>
         /// <returns>GameClient.</returns>
         internal GameClient GetSession()
@@ -59,7 +65,7 @@ namespace Yupi.Messages.Handlers
         }
 
         /// <summary>
-        /// Gets the response.
+        ///     Gets the response.
         /// </summary>
         /// <returns>ServerMessage.</returns>
         internal ServerMessage GetResponse()
@@ -68,7 +74,7 @@ namespace Yupi.Messages.Handlers
         }
 
         /// <summary>
-        /// Destroys this instance.
+        ///     Destroys this instance.
         /// </summary>
         internal void Destroy()
         {
@@ -76,7 +82,7 @@ namespace Yupi.Messages.Handlers
         }
 
         /// <summary>
-        /// Handles the request.
+        ///     Handles the request.
         /// </summary>
         /// <param name="request">The request.</param>
         internal void HandleRequest(ClientMessage request)
@@ -86,7 +92,7 @@ namespace Yupi.Messages.Handlers
         }
 
         /// <summary>
-        /// Sends the response.
+        ///     Sends the response.
         /// </summary>
         internal void SendResponse()
         {
@@ -95,7 +101,7 @@ namespace Yupi.Messages.Handlers
         }
 
         /// <summary>
-        /// Adds the staff pick.
+        ///     Adds the staff pick.
         /// </summary>
         internal void AddStaffPick()
         {
@@ -103,27 +109,15 @@ namespace Yupi.Messages.Handlers
         }
 
         /// <summary>
-        /// Gets the client version message event.
+        ///     Gets the client version message event.
         /// </summary>
         internal void GetClientVersionMessageEvent()
         {
-            var release = Request.GetString();
-            if (release.Contains("201409222303-304766480"))
-            {
-                Session.GetHabbo().ReleaseName = "304766480";
-                Console.WriteLine("[Handled] Release Id: RELEASE63-201409222303-304766480");
-            }
-            else if (release.Contains("201411201226-580134750"))
-            {
-                Session.GetHabbo().ReleaseName = "304766480";
-                Console.WriteLine("[Handled] Release Id: RELEASE63-201411201226-580134750");
-            }
-            else
-                LibraryParser.ReleaseName = "Undefined Release";
+            Request.GetString();
         }
 
         /// <summary>
-        /// Pongs this instance.
+        ///     Pongs this instance.
         /// </summary>
         internal void Pong()
         {
@@ -131,7 +125,7 @@ namespace Yupi.Messages.Handlers
         }
 
         /// <summary>
-        /// Disconnects the event.
+        ///     Disconnects the event.
         /// </summary>
         internal void DisconnectEvent()
         {
@@ -139,7 +133,7 @@ namespace Yupi.Messages.Handlers
         }
 
         /// <summary>
-        /// Latencies the test.
+        ///     Latencies the test.
         /// </summary>
         internal void LatencyTest()
         {
@@ -155,14 +149,7 @@ namespace Yupi.Messages.Handlers
         }
 
         /// <summary>
-        /// Fuckyous this instance.
-        /// </summary>
-        internal void Fuckyou()
-        {
-        }
-
-        /// <summary>
-        /// Initializes the crypto.
+        ///     Initializes the crypto.
         /// </summary>
         internal void InitCrypto()
         {
@@ -174,6 +161,7 @@ namespace Yupi.Messages.Handlers
                 SendResponse();
                 return;
             }
+
             Response.Init(LibraryParser.OutgoingRequest("InitCryptoMessageComposer"));
             Response.AppendString(Handler.GetRsaDiffieHellmanPrimeKey());
             Response.AppendString(Handler.GetRsaDiffieHellmanGeneratorKey());
@@ -181,12 +169,12 @@ namespace Yupi.Messages.Handlers
         }
 
         /// <summary>
-        /// Secrets the key.
+        ///     Secrets the key.
         /// </summary>
         internal void SecretKey()
         {
-            var cipherKey = Request.GetString();
-            var sharedKey = Handler.CalculateDiffieHellmanSharedKey(cipherKey);
+            string cipherKey = Request.GetString();
+            BigInteger sharedKey = Handler.CalculateDiffieHellmanSharedKey(cipherKey);
 
             if (LibraryParser.Config["Crypto.Enabled"] == "false")
             {
@@ -203,7 +191,7 @@ namespace Yupi.Messages.Handlers
                 Response.AppendBool(ServerExtraSettings.EncryptionClientSide);
                 SendResponse();
 
-                var data = sharedKey.ToByteArray();
+                byte[] data = sharedKey.ToByteArray();
 
                 if (data[data.Length - 1] == 0)
                     Array.Resize(ref data, data.Length - 1);
@@ -219,17 +207,17 @@ namespace Yupi.Messages.Handlers
         }
 
         /// <summary>
-        /// Machines the identifier.
+        ///     Machines the identifier.
         /// </summary>
         internal void MachineId()
         {
             Request.GetString();
-            var machineId = Request.GetString();
+            string machineId = Request.GetString();
             Session.MachineId = machineId;
         }
 
         /// <summary>
-        /// Logins the with ticket.
+        ///     Logins the with ticket.
         /// </summary>
         internal void LoginWithTicket()
         {
@@ -244,20 +232,26 @@ namespace Yupi.Messages.Handlers
         }
 
         /// <summary>
-        /// Informations the retrieve.
+        ///     Informations the retrieve.
         /// </summary>
         internal void InfoRetrieve()
         {
-            if (Session == null || Session.GetHabbo() == null)
+            if (Session?.GetHabbo() == null)
                 return;
-            var habbo = Session.GetHabbo();
+
+            Habbo habbo = Session.GetHabbo();
+
+            bool tradeLocked = Session.GetHabbo().CheckTrading();
+            bool canUseFloorEditor = true;
+                //ServerExtraSettings.EveryoneUseFloor || Session.GetHabbo().Vip || Session.GetHabbo().Rank >= 4;
+
             Response.Init(LibraryParser.OutgoingRequest("UserObjectMessageComposer"));
             Response.AppendInteger(habbo.Id);
             Response.AppendString(habbo.UserName);
             Response.AppendString(habbo.Look);
             Response.AppendString(habbo.Gender.ToUpper());
             Response.AppendString(habbo.Motto);
-            Response.AppendString("");
+            Response.AppendString(string.Empty);
             Response.AppendBool(false);
             Response.AppendInteger(habbo.Respect);
             Response.AppendInteger(habbo.DailyRespectPoints);
@@ -267,55 +261,65 @@ namespace Yupi.Messages.Handlers
             Response.AppendBool(habbo.CanChangeName);
             Response.AppendBool(false);
             SendResponse();
+
             Response.Init(LibraryParser.OutgoingRequest("BuildersClubMembershipMessageComposer"));
             Response.AppendInteger(Session.GetHabbo().BuildersExpire);
             Response.AppendInteger(Session.GetHabbo().BuildersItemsMax);
             Response.AppendInteger(2);
             SendResponse();
-            var tradeLocked = Session.GetHabbo().CheckTrading();
-            var canUseFloorEditor = (ServerExtraSettings.EveryoneUseFloor || Session.GetHabbo().Vip || Session.GetHabbo().Rank >= 4);
+
             Response.Init(LibraryParser.OutgoingRequest("SendPerkAllowancesMessageComposer"));
             Response.AppendInteger(11);
+
             Response.AppendString("BUILDER_AT_WORK");
-            Response.AppendString("");
+            Response.AppendString(string.Empty);
             Response.AppendBool(canUseFloorEditor);
+
             Response.AppendString("VOTE_IN_COMPETITIONS");
             Response.AppendString("requirement.unfulfilled.helper_level_2");
             Response.AppendBool(false);
+
             Response.AppendString("USE_GUIDE_TOOL");
             Response.AppendString((Session.GetHabbo().TalentStatus == "helper" &&
-                                   Session.GetHabbo().CurrentTalentLevel >= 4) ||
-                                  (Session.GetHabbo().Rank >= 4)
-                                    ? ""
-                                    : "requirement.unfulfilled.helper_level_4");
+                                   Session.GetHabbo().CurrentTalentLevel >= 4) || (Session.GetHabbo().Rank >= 4)
+                ? string.Empty
+                : "requirement.unfulfilled.helper_level_4");
             Response.AppendBool((Session.GetHabbo().TalentStatus == "helper" &&
-                                 Session.GetHabbo().CurrentTalentLevel >= 4) ||
-                                (Session.GetHabbo().Rank >= 4));
+                                 Session.GetHabbo().CurrentTalentLevel >= 4) || (Session.GetHabbo().Rank >= 4));
+
             Response.AppendString("JUDGE_CHAT_REVIEWS");
             Response.AppendString("requirement.unfulfilled.helper_level_6");
             Response.AppendBool(false);
+
             Response.AppendString("NAVIGATOR_ROOM_THUMBNAIL_CAMERA");
-            Response.AppendString("");
+            Response.AppendString(string.Empty);
             Response.AppendBool(true);
+
             Response.AppendString("CALL_ON_HELPERS");
-            Response.AppendString("");
+            Response.AppendString(string.Empty);
             Response.AppendBool(true);
+
             Response.AppendString("CITIZEN");
-            Response.AppendString("");
+            Response.AppendString(string.Empty);
             Response.AppendBool(Session.GetHabbo().TalentStatus == "helper" ||
                                 Session.GetHabbo().CurrentTalentLevel >= 4);
+
             Response.AppendString("MOUSE_ZOOM");
-            Response.AppendString("");
+            Response.AppendString(string.Empty);
             Response.AppendBool(false);
+
             Response.AppendString("TRADE");
-            Response.AppendString(tradeLocked ? "" : "requirement.unfulfilled.no_trade_lock");
+            Response.AppendString(tradeLocked ? string.Empty : "requirement.unfulfilled.no_trade_lock");
             Response.AppendBool(tradeLocked);
+
             Response.AppendString("CAMERA");
-            Response.AppendString("");
+            Response.AppendString(string.Empty);
             Response.AppendBool(ServerExtraSettings.EnableBetaCamera);
+
             Response.AppendString("NAVIGATOR_PHASE_TWO_2014");
-            Response.AppendString("");
+            Response.AppendString(string.Empty);
             Response.AppendBool(true);
+
             SendResponse();
 
             Session.GetHabbo().InitMessenger();
@@ -335,60 +339,63 @@ namespace Yupi.Messages.Handlers
             GetResponse().AppendString("");
             GetResponse().AppendString("");
             SendResponse();
+
             GetResponse().Init(LibraryParser.OutgoingRequest("AchievementPointsMessageComposer"));
             GetResponse().AppendInteger(Session.GetHabbo().AchievementPoints);
             SendResponse();
+
             GetResponse().Init(LibraryParser.OutgoingRequest("FigureSetIdsMessageComposer"));
             Session.GetHabbo().ClothesManagerManager.Serialize(GetResponse());
             SendResponse();
-            /*Response.Init(LibraryParser.OutgoingRequest("NewbieStatusMessageComposer"));
-            Response.AppendInteger(0);// 2 = new - 1 = nothing - 0 = not new
-            SendResponse();*/
+
             Session.SendMessage(Yupi.GetGame().GetNavigator().SerializePromotionCategories());
+
             if (Yupi.GetGame().GetTargetedOfferManager().CurrentOffer != null)
             {
                 Yupi.GetGame().GetTargetedOfferManager().GenerateMessage(GetResponse());
+
                 SendResponse();
-            }
-            if (Session.GetHabbo().CurrentQuestId != 0)
-            {
-                var quest = Yupi.GetGame().GetQuestManager().GetQuest(Session.GetHabbo().CurrentQuestId);
-                Session.SendMessage(QuestStartedComposer.Compose(Session, quest));
             }
         }
 
         /// <summary>
-        /// Habboes the camera.
+        ///     Habboes the camera.
         /// </summary>
         internal void HabboCamera()
         {
-            //string one = this.Request.GetString();
-            /*var two = */
-            using (var queryReactor = Yupi.GetDatabaseManager().GetQueryReactor())
+            using (IQueryAdapter commitableQueryReactor = Yupi.GetDatabaseManager().GetQueryReactor())
             {
-                queryReactor.SetQuery(string.Format("SELECT * FROM cms_stories_photos_preview WHERE user_id = {0} AND type = 'PHOTO' ORDER BY id DESC LIMIT 1", Session.GetHabbo().Id));
-                DataTable table = queryReactor.GetTable();
+                commitableQueryReactor.SetQuery(
+                    $"SELECT * FROM cms_stories_photos_preview WHERE user_id = {Session.GetHabbo().Id} AND type = 'PHOTO' ORDER BY id DESC LIMIT 1");
+
+                DataTable table = commitableQueryReactor.GetTable();
+
                 foreach (DataRow dataRow in table.Rows)
                 {
-                    var date = dataRow["date"];
-                    var room = dataRow["room_id"];
-                    var photo = dataRow["id"];
-                    var image = dataRow["image_url"];
+                    object date = dataRow["date"];
+                    object room = dataRow["room_id"];
+                    object photo = dataRow["id"];
+                    object image = dataRow["image_url"];
 
-                    using (var queryReactor2 = Yupi.GetDatabaseManager().GetQueryReactor())
+                    using (IQueryAdapter commitableQueryReactor2 = Yupi.GetDatabaseManager().GetQueryReactor())
                     {
-                        queryReactor2.SetQuery("INSERT INTO cms_stories_photos (user_id,user_name,room_id,image_preview_url,image_url,type,date,tags) VALUES (@user_id,@user_name,@room_id,@image_url,@image_url,@type,@date,@tags)");
-                        queryReactor2.AddParameter("user_id", Session.GetHabbo().Id);
-                        queryReactor2.AddParameter("user_name", Session.GetHabbo().UserName);
-                        queryReactor2.AddParameter("room_id", room);
-                        queryReactor2.AddParameter("image_url", image);
-                        queryReactor2.AddParameter("type", "PHOTO");
-                        queryReactor2.AddParameter("date", date);
-                        queryReactor2.AddParameter("tags", "");
-                        queryReactor2.RunQuery();
+                        commitableQueryReactor2.SetQuery(
+                            "INSERT INTO cms_stories_photos (user_id,user_name,room_id,image_preview_url,image_url,type,date,tags) VALUES (@user_id,@user_name,@room_id,@image_url,@image_url,@type,@date,@tags)");
+                        commitableQueryReactor2.AddParameter("user_id", Session.GetHabbo().Id);
+                        commitableQueryReactor2.AddParameter("user_name", Session.GetHabbo().UserName);
+                        commitableQueryReactor2.AddParameter("room_id", room);
+                        commitableQueryReactor2.AddParameter("image_url", image);
+                        commitableQueryReactor2.AddParameter("type", "PHOTO");
+                        commitableQueryReactor2.AddParameter("date", date);
+                        commitableQueryReactor2.AddParameter("tags", "");
+                        commitableQueryReactor2.RunQuery();
 
-                        var newPhotoData = "{\"t\":" + date + ",\"u\":\"" + photo + "\",\"m\":\"\",\"s\":" + room + ",\"w\":\"" + image + "\"}";
-                        var item = Session.GetHabbo().GetInventoryComponent().AddNewItem(0, "external_image_wallitem_poster", newPhotoData, 0, true, false, 0, 0);
+                        string newPhotoData = "{\"t\":" + date + ",\"u\":\"" + photo + "\",\"m\":\"\",\"s\":" + room +
+                                           ",\"w\":\"" + image + "\"}";
+
+                        UserItem item = Session.GetHabbo()
+                            .GetInventoryComponent()
+                            .AddNewItem(0, "external_image_wallitem_poster", newPhotoData, 0, true, false, 0, 0);
 
                         Session.GetHabbo().GetInventoryComponent().UpdateItems(false);
                         Session.GetHabbo().Credits -= 2;
@@ -398,12 +405,13 @@ namespace Yupi.Messages.Handlers
                 }
             }
 
-            var message = new ServerMessage(LibraryParser.OutgoingRequest("CameraPurchaseOk"));
+            ServerMessage message = new ServerMessage(LibraryParser.OutgoingRequest("CameraPurchaseOk"));
+
             Session.SendMessage(message);
         }
 
         /// <summary>
-        /// Called when [click].
+        ///     Called when [click].
         /// </summary>
         internal void OnClick()
         {
@@ -411,50 +419,68 @@ namespace Yupi.Messages.Handlers
         }
 
         /// <summary>
-        /// Gets the friends count.
+        ///     Gets the friends count.
         /// </summary>
         /// <param name="userId">The user identifier.</param>
         /// <returns>System.Int32.</returns>
         private static int GetFriendsCount(uint userId)
         {
             int result;
-            using (var queryReactor = Yupi.GetDatabaseManager().GetQueryReactor())
+
+            using (IQueryAdapter commitableQueryReactor = Yupi.GetDatabaseManager().GetQueryReactor())
             {
-                queryReactor.SetQuery("SELECT COUNT(*) FROM messenger_friendships WHERE user_one_id = @id OR user_two_id = @id;");
-                queryReactor.AddParameter("id", userId);
-                result = queryReactor.GetInteger();
+                commitableQueryReactor.SetQuery(
+                    "SELECT COUNT(*) FROM messenger_friendships WHERE user_one_id = @id OR user_two_id = @id;");
+                commitableQueryReactor.AddParameter("id", userId);
+
+                result = commitableQueryReactor.GetInteger();
             }
+
             return result;
         }
 
         /// <summary>
-        /// Targeteds the offer buy.
+        ///     Targeteds the offer buy.
         /// </summary>
         internal void PurchaseTargetedOffer()
         {
-            int offerId = Request.GetInteger();
-            int quantity = Request.GetInteger();
-            var offer = Yupi.GetGame().GetTargetedOfferManager().CurrentOffer;
-            if (offer == null) return;
-            if (Session.GetHabbo().Credits < offer.CostCredits * quantity) return;
-            if (Session.GetHabbo().ActivityPoints < offer.CostDuckets * quantity) return;
-            if (Session.GetHabbo().Diamonds < offer.CostDiamonds * quantity) return;
+            uint offerId = Request.GetUInteger();
+            uint quantity = Request.GetUInteger();
+
+            TargetedOffer offer = Yupi.GetGame().GetTargetedOfferManager().CurrentOffer;
+
+            if (offer == null)
+                return;
+
+            if (Session.GetHabbo().Credits < offer.CostCredits*quantity)
+                return;
+
+            if (Session.GetHabbo().Duckets < offer.CostDuckets*quantity)
+                return;
+
+            if (Session.GetHabbo().Diamonds < offer.CostDiamonds*quantity)
+                return;
+
             foreach (string product in offer.Products)
             {
-                var item = Yupi.GetGame().GetItemManager().GetItemByName(product);
-                if (item == null) continue;
+                Item item = Yupi.GetGame().GetItemManager().GetItemByName(product);
+
+                if (item == null)
+                    continue;
+
                 Yupi.GetGame().GetCatalog().DeliverItems(Session, item, quantity, string.Empty, 0, 0, string.Empty);
             }
-            Session.GetHabbo().Credits -= offer.CostCredits * quantity;
-            Session.GetHabbo().ActivityPoints -= offer.CostDuckets * quantity;
-            Session.GetHabbo().Diamonds -= offer.CostDiamonds * quantity;
+
+            Session.GetHabbo().Credits -= offer.CostCredits*quantity;
+            Session.GetHabbo().Duckets -= offer.CostDuckets*quantity;
+            Session.GetHabbo().Diamonds -= offer.CostDiamonds*quantity;
             Session.GetHabbo().UpdateCreditsBalance();
             Session.GetHabbo().UpdateSeasonalCurrencyBalance();
             Session.GetHabbo().GetInventoryComponent().UpdateItems(false);
         }
 
         /// <summary>
-        /// Goes the name of to room by.
+        ///     Goes the name of to room by.
         /// </summary>
         internal void GoToRoomByName()
         {
@@ -468,7 +494,13 @@ namespace Yupi.Messages.Handlers
                     break;
 
                 case "random_friending_room":
-                    var rooms = Yupi.GetGame().GetRoomManager().GetActiveRooms().Select(room => room.Key).Where(room => room != null && room.UsersNow > 0).ToList();
+                    List<RoomData> rooms =
+                        Yupi.GetGame()
+                            .GetRoomManager()
+                            .GetActiveRooms()
+                            .Select(room => room.Key)
+                            .Where(room => room != null && room.UsersNow > 0)
+                            .ToList();
                     if (!rooms.Any())
                         return;
                     if (rooms.Count() == 1)
@@ -482,13 +514,13 @@ namespace Yupi.Messages.Handlers
 
             if (roomId == 0)
                 return;
-            var roomFwd = new ServerMessage(LibraryParser.OutgoingRequest("RoomForwardMessageComposer"));
+            ServerMessage roomFwd = new ServerMessage(LibraryParser.OutgoingRequest("RoomForwardMessageComposer"));
             roomFwd.AppendInteger(roomId);
             Session.SendMessage(roomFwd);
         }
 
         /// <summary>
-        /// Gets the uc panel.
+        ///     Gets the uc panel.
         /// </summary>
         internal void GetUcPanel()
         {
@@ -502,7 +534,7 @@ namespace Yupi.Messages.Handlers
         }
 
         /// <summary>
-        /// Gets the uc panel hotel.
+        ///     Gets the uc panel hotel.
         /// </summary>
         internal void GetUcPanelHotel()
         {
@@ -510,7 +542,7 @@ namespace Yupi.Messages.Handlers
         }
 
         /// <summary>
-        /// Saves the room thumbnail.
+        ///     Saves the room thumbnail.
         /// </summary>
         internal void SaveRoomThumbnail()
         {
@@ -521,11 +553,11 @@ namespace Yupi.Messages.Handlers
                 int count = Request.GetInteger();
 
                 byte[] bytes = Request.GetBytes(count);
-                var outData = Converter.Deflate(bytes);
+                string outData = Converter.Deflate(bytes);
 
-                var url = WebManager.HttpPostJson(ServerExtraSettings.StoriesApiThumbnailServerUrl, outData);
+                string url = WebManager.HttpPostJson(ServerExtraSettings.StoriesApiThumbnailServerUrl, outData);
 
-                var thumb = new ServerMessage(LibraryParser.OutgoingRequest("ThumbnailSuccessMessageComposer"));
+                ServerMessage thumb = new ServerMessage(LibraryParser.OutgoingRequest("ThumbnailSuccessMessageComposer"));
                 thumb.AppendBool(true);
                 thumb.AppendBool(false);
                 Session.SendMessage(thumb);

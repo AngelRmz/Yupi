@@ -5,11 +5,11 @@ using System.Linq;
 using System.Timers;
 using Yupi.Core.Io;
 using Yupi.Core.Settings;
-using Yupi.Data.Base.Sessions.Interfaces;
+using Yupi.Data.Base.Adapters.Interfaces;
 using Yupi.Game.Achievements.Structs;
-using Yupi.Game.Browser.Interfaces;
+using Yupi.Game.Browser.Models;
 using Yupi.Game.GameClients.Interfaces;
-using Yupi.Game.Groups.Interfaces;
+using Yupi.Game.Groups.Structs;
 using Yupi.Game.Rooms;
 using Yupi.Game.Rooms.Data;
 using Yupi.Game.Users.Badges;
@@ -87,7 +87,7 @@ namespace Yupi.Game.Users
         /// <summary>
         ///     The credits
         /// </summary>
-        internal int ActivityPoints;
+        internal uint Duckets;
 
         /// <summary>
         ///     The answered polls
@@ -135,7 +135,7 @@ namespace Yupi.Game.Users
         /// <summary>
         ///     The credits
         /// </summary>
-        internal int Credits, AchievementPoints;
+        internal uint Credits, AchievementPoints;
 
         /// <summary>
         ///     The current quest identifier
@@ -169,7 +169,7 @@ namespace Yupi.Game.Users
         /// <summary>
         ///     The favourite group
         /// </summary>
-        internal int FavouriteGroup;
+        internal uint FavouriteGroup;
 
         /// <summary>
         ///     The flood time
@@ -440,7 +440,7 @@ namespace Yupi.Game.Users
         /// <param name="look">The look.</param>
         /// <param name="gender">The gender.</param>
         /// <param name="credits">The credits.</param>
-        /// <param name="activityPoints">The activity points.</param>
+        /// <param name="duckets">The activity points.</param>
         /// <param name="lastActivityPointsUpdate">The last activity points update.</param>
         /// <param name="muted">if set to <c>true</c> [muted].</param>
         /// <param name="homeRoom">The home room.</param>
@@ -475,10 +475,10 @@ namespace Yupi.Game.Users
         /// <param name="dailyCompetitionVotes"></param>
         /// <param name="dutyLevel"></param>
         internal Habbo(uint id, string userName, string realName, uint rank, string motto, string look, string gender,
-            int credits, int activityPoints, double lastActivityPointsUpdate, bool muted, uint homeRoom, int respect,
+            uint credits, uint duckets, double lastActivityPointsUpdate, bool muted, uint homeRoom, int respect,
             int dailyRespectPoints, int dailyPetRespectPoints, bool hasFriendRequestsDisabled, int currentQuestId,
-            int currentQuestProgress, int achievementPoints, int regTimestamp, int lastOnline, bool appearOffline,
-            bool hideInRoom, bool vip, double createDate, bool online, string citizenShip, int diamonds,
+            int currentQuestProgress, uint achievementPoints, int regTimestamp, int lastOnline, bool appearOffline,
+            bool hideInRoom, bool vip, double createDate, bool online, string citizenShip, uint diamonds,
             HashSet<GroupMember> groups, int favId, int lastChange, bool tradeLocked, int tradeLockExpire,
             bool nuxPassed,
             int buildersExpire, int buildersItemsMax, int buildersItemsUsed, int releaseVersion, bool onDuty,
@@ -512,7 +512,7 @@ namespace Yupi.Game.Users
             TradeLockExpire = tradeLockExpire;
             Gender = gender.ToLower() == "f" ? "f" : "m";
             Credits = credits;
-            ActivityPoints = activityPoints;
+            Duckets = duckets;
             _lastActivityPointsUpdate = lastActivityPointsUpdate;
             Diamonds = diamonds;
             AchievementPoints = achievementPoints;
@@ -548,7 +548,7 @@ namespace Yupi.Game.Users
             _currentQuestProgress = currentQuestProgress;
             IsHopping = false;
 
-            FavouriteGroup = Yupi.GetGame().GetGroupManager().GetGroup(favId) != null ? favId : 0;
+            FavouriteGroup = Yupi.GetGame().GetGroupManager().GetGroup((uint) favId) != null ? (uint) favId : 0;
 
             UserGroups = groups;
 
@@ -566,21 +566,22 @@ namespace Yupi.Game.Users
             DisableEventAlert = false;
         }
 
-        internal int Diamonds
+        internal uint Diamonds
         {
             get
             {
-                using (var queryReactor = Yupi.GetDatabaseManager().GetQueryReactor())
+                using (IQueryAdapter commitableQueryReactor = Yupi.GetDatabaseManager().GetQueryReactor())
                 {
-                    queryReactor.SetQuery($"SELECT diamonds FROM users WHERE id = {Id}");
-                    var diamonds = queryReactor.GetInteger();
-                    return diamonds;
+                    commitableQueryReactor.SetQuery($"SELECT diamonds FROM users WHERE id = {Id}");
+
+                    return (uint) commitableQueryReactor.GetInteger();
                 }
             }
             set
             {
-                using (var queryReactor = Yupi.GetDatabaseManager().GetQueryReactor())
-                    queryReactor.RunFastQuery(string.Format("UPDATE users SET diamonds = {1} WHERE id = {0}", Id, value));
+                using (IQueryAdapter commitableQueryReactor = Yupi.GetDatabaseManager().GetQueryReactor())
+                    commitableQueryReactor.RunFastQuery(string.Format("UPDATE users SET diamonds = {1} WHERE id = {0}",
+                        Id, value));
             }
         }
 
@@ -591,7 +592,7 @@ namespace Yupi.Game.Users
         public bool CanChangeName => (ServerExtraSettings.ChangeNameStaff && HasFuse("fuse_can_change_name")) ||
                                      (ServerExtraSettings.ChangeNameVip && Vip) ||
                                      (ServerExtraSettings.ChangeNameEveryone &&
-                                      Yupi.GetUnixTimeStamp() > (LastChange + 604800));
+                                      Yupi.GetUnixTimeStamp() > LastChange + 604800);
 
         /// <summary>
         ///     Gets the head part.
@@ -601,9 +602,9 @@ namespace Yupi.Game.Users
         {
             get
             {
-                var strtmp = Look.Split('.');
-                var tmp2 = strtmp.FirstOrDefault(x => x.Contains("hd-"));
-                var lookToReturn = tmp2 ?? string.Empty;
+                string[] strtmp = Look.Split('.');
+                string tmp2 = strtmp.FirstOrDefault(x => x.Contains("hd-"));
+                string lookToReturn = tmp2 ?? string.Empty;
 
                 if (Look.Contains("ha-"))
                     lookToReturn += $".{strtmp.FirstOrDefault(x => x.Contains("ha-"))}";
@@ -655,7 +656,7 @@ namespace Yupi.Game.Users
             {
                 _habboinfoSaved = true;
                 return string.Concat("UPDATE users SET online='0', last_online = '", Yupi.GetUnixTimeStamp(),
-                    "', activity_points = '", ActivityPoints, "', diamonds = '", Diamonds, "', credits = '", Credits,
+                    "', activity_points = '", Duckets, "', diamonds = '", Diamonds, "', credits = '", Credits,
                     "' WHERE id = '", Id, "'; UPDATE users_stats SET achievement_score = ", AchievementPoints,
                     " WHERE id=", Id, " LIMIT 1; ");
             }
@@ -737,13 +738,13 @@ namespace Yupi.Game.Users
         /// </summary>
         internal void UpdateRooms()
         {
-            using (var dbClient = Yupi.GetDatabaseManager().GetQueryReactor())
+            using (IQueryAdapter dbClient = Yupi.GetDatabaseManager().GetQueryReactor())
             {
                 UsersRooms.Clear();
                 dbClient.SetQuery("SELECT * FROM rooms_data WHERE owner = @userId ORDER BY id ASC LIMIT 50");
                 dbClient.AddParameter("userId", Id);
 
-                var table = dbClient.GetTable();
+                DataTable table = dbClient.GetTable();
 
                 foreach (DataRow dataRow in table.Rows)
                     UsersRooms.Add(Yupi.GetGame()
@@ -763,15 +764,6 @@ namespace Yupi.Game.Users
             LoadFavorites(data.FavouritedRooms);
             LoadMutedUsers(data.Ignores);
             LoadTags(data.Tags);
-        }
-
-        /// <summary>
-        ///     Serializes the quests.
-        /// </summary>
-        /// <param name="response">The response.</param>
-        internal void SerializeQuests(ref QueuedServerMessage response)
-        {
-            Yupi.GetGame().GetQuestManager().GetList(_mClient, null);
         }
 
         /// <summary>
@@ -830,21 +822,21 @@ namespace Yupi.Game.Users
         /// </summary>
         internal void SerializeClub()
         {
-            var client = GetClient();
-            var serverMessage = new ServerMessage();
+            GameClient client = GetClient();
+            ServerMessage serverMessage = new ServerMessage();
             serverMessage.Init(LibraryParser.OutgoingRequest("SubscriptionStatusMessageComposer"));
             serverMessage.AppendString("club_habbo");
             if (client.GetHabbo().GetSubscriptionManager().HasSubscription)
             {
                 double num = client.GetHabbo().GetSubscriptionManager().GetSubscription().ExpireTime;
-                var num2 = num - Yupi.GetUnixTimeStamp();
-                var num3 = (int) Math.Ceiling(num2/86400.0);
-                var i =
+                double num2 = num - Yupi.GetUnixTimeStamp();
+                int num3 = (int) Math.Ceiling(num2/86400.0);
+                int i =
                     (int)
                         Math.Ceiling((Yupi.GetUnixTimeStamp() -
                                       (double) client.GetHabbo().GetSubscriptionManager().GetSubscription().ActivateTime)/
                                      86400.0);
-                var num4 = num3/31;
+                int num4 = num3/31;
 
                 if (num4 >= 1)
                     num4--;
@@ -874,7 +866,7 @@ namespace Yupi.Game.Users
 
             client.SendMessage(serverMessage);
 
-            var serverMessage2 = new ServerMessage(LibraryParser.OutgoingRequest("UserClubRightsMessageComposer"));
+            ServerMessage serverMessage2 = new ServerMessage(LibraryParser.OutgoingRequest("UserClubRightsMessageComposer"));
 
             serverMessage2.AppendInteger(GetSubscriptionManager().HasSubscription ? 2 : 0);
             serverMessage2.AppendInteger(Rank);
@@ -909,6 +901,7 @@ namespace Yupi.Game.Users
         {
             if (Disconnected)
                 return;
+
             Disconnected = true;
 
             if (_inventoryComponent != null)
@@ -917,7 +910,7 @@ namespace Yupi.Game.Users
                 _inventoryComponent.SetIdleState();
             }
 
-            var navilogs = string.Empty;
+            string navilogs = string.Empty;
 
             if (NavigatorLogs.Any())
             {
@@ -928,35 +921,41 @@ namespace Yupi.Game.Users
 
             Yupi.GetGame().GetClientManager().UnregisterClient(Id, UserName);
 
-            Writer.WriteLine(UserName + " disconnected from game. Reason: " + reason, "Yupi.Users", ConsoleColor.DarkYellow);
+            Writer.WriteLine(UserName + " disconnected from game. Reason: " + reason, "Yupi.Users",
+                ConsoleColor.DarkYellow);
 
-            var getOnlineSeconds = DateTime.Now - TimeLoggedOn;
-            var secondsToGive = getOnlineSeconds.Seconds;
+            TimeSpan getOnlineSeconds = DateTime.Now - TimeLoggedOn;
+            int secondsToGive = getOnlineSeconds.Seconds;
 
             if (!_habboinfoSaved)
             {
                 _habboinfoSaved = true;
-                using (var queryReactor = Yupi.GetDatabaseManager().GetQueryReactor())
+                using (IQueryAdapter commitableQueryReactor = Yupi.GetDatabaseManager().GetQueryReactor())
                 {
-                    queryReactor.SetQuery("UPDATE users SET activity_points = " + ActivityPoints + ", credits = " +
-                                          Credits + ", diamonds = " + Diamonds + ", online='0', last_online = '" +
-                                          Yupi.GetUnixTimeStamp() + "', builders_items_used = " + BuildersItemsUsed +
-                                          ", navigator_logs = @navilogs  WHERE id = " + Id +
-                                          " LIMIT 1;UPDATE users_stats SET achievement_score=" + AchievementPoints +
-                                          " WHERE id=" + Id + " LIMIT 1;");
-                    queryReactor.AddParameter("navilogs", navilogs);
-                    queryReactor.RunQuery();
-                    queryReactor.RunFastQuery("UPDATE users_stats SET online_seconds = online_seconds + " +
-                                              secondsToGive + " WHERE id = " + Id);
+                    commitableQueryReactor.SetQuery("UPDATE users SET activity_points = " + Duckets +
+                                                    ", credits = " +
+                                                    Credits + ", diamonds = " + Diamonds +
+                                                    ", online='0', last_online = '" +
+                                                    Yupi.GetUnixTimeStamp() + "', builders_items_used = " +
+                                                    BuildersItemsUsed +
+                                                    ", navigator_logs = @navilogs  WHERE id = " + Id +
+                                                    " LIMIT 1;UPDATE users_stats SET achievement_score=" +
+                                                    AchievementPoints +
+                                                    " WHERE id=" + Id + " LIMIT 1;");
+                    commitableQueryReactor.AddParameter("navilogs", navilogs);
+                    commitableQueryReactor.RunQuery();
+                    commitableQueryReactor.RunFastQuery("UPDATE users_stats SET online_seconds = online_seconds + " +
+                                                        secondsToGive + " WHERE id = " + Id);
 
                     if (Rank >= 4)
-                        queryReactor.RunFastQuery(
+                        commitableQueryReactor.RunFastQuery(
                             $"UPDATE moderation_tickets SET status='open', moderator_id=0 WHERE status='picked' AND moderator_id={Id}");
 
-                    queryReactor.RunFastQuery("UPDATE users SET block_newfriends = '" +
-                                              Convert.ToInt32(HasFriendRequestsDisabled) + "', hide_online = '" +
-                                              Convert.ToInt32(AppearOffline) + "', hide_inroom = '" +
-                                              Convert.ToInt32(HideInRoom) + "' WHERE id = " + Id);
+                    commitableQueryReactor.RunFastQuery("UPDATE users SET block_newfriends = '" +
+                                                        Convert.ToInt32(HasFriendRequestsDisabled) +
+                                                        "', hide_online = '" +
+                                                        Convert.ToInt32(AppearOffline) + "', hide_inroom = '" +
+                                                        Convert.ToInt32(HideInRoom) + "' WHERE id = " + Id);
                 }
             }
 
@@ -980,7 +979,7 @@ namespace Yupi.Game.Users
         /// </summary>
         internal void InitMessenger()
         {
-            var client = GetClient();
+            GameClient client = GetClient();
 
             if (client == null)
                 return;
@@ -991,8 +990,8 @@ namespace Yupi.Game.Users
 
             if (Yupi.OfflineMessages.ContainsKey(Id))
             {
-                var list = Yupi.OfflineMessages[Id];
-                foreach (var current in list)
+                List<OfflineMessage> list = Yupi.OfflineMessages[Id];
+                foreach (OfflineMessage current in list)
                     client.SendMessage(_messenger.SerializeOfflineMessages(current));
                 Yupi.OfflineMessages.Remove(Id);
                 OfflineMessage.RemoveAllMessages(Yupi.GetDatabaseManager().GetQueryReactor(), Id);
@@ -1032,7 +1031,7 @@ namespace Yupi.Game.Users
                 .Init(LibraryParser.OutgoingRequest("ActivityPointsMessageComposer"));
             _mClient.GetMessageHandler().GetResponse().AppendInteger(3);
             _mClient.GetMessageHandler().GetResponse().AppendInteger(0);
-            _mClient.GetMessageHandler().GetResponse().AppendInteger(ActivityPoints);
+            _mClient.GetMessageHandler().GetResponse().AppendInteger(Duckets);
             _mClient.GetMessageHandler().GetResponse().AppendInteger(5);
             _mClient.GetMessageHandler().GetResponse().AppendInteger(Diamonds);
             _mClient.GetMessageHandler().GetResponse().AppendInteger(105);
@@ -1053,7 +1052,7 @@ namespace Yupi.Game.Users
                 .Init(LibraryParser.OutgoingRequest("ActivityPointsMessageComposer"));
             _mClient.GetMessageHandler().GetResponse().AppendInteger(3);
             _mClient.GetMessageHandler().GetResponse().AppendInteger(0);
-            _mClient.GetMessageHandler().GetResponse().AppendInteger(ActivityPoints);
+            _mClient.GetMessageHandler().GetResponse().AppendInteger(Duckets);
             _mClient.GetMessageHandler().GetResponse().AppendInteger(5);
             _mClient.GetMessageHandler().GetResponse().AppendInteger(Diamonds);
             _mClient.GetMessageHandler().GetResponse().AppendInteger(105);
@@ -1065,7 +1064,7 @@ namespace Yupi.Game.Users
         ///     Notifies the new pixels.
         /// </summary>
         /// <param name="change">The change.</param>
-        internal void NotifyNewPixels(int change)
+        internal void NotifyNewPixels(uint change)
         {
             if (_mClient?.GetMessageHandler() == null || _mClient.GetMessageHandler().GetResponse() == null)
                 return;
@@ -1073,7 +1072,7 @@ namespace Yupi.Game.Users
             _mClient.GetMessageHandler()
                 .GetResponse()
                 .Init(LibraryParser.OutgoingRequest("ActivityPointsNotificationMessageComposer"));
-            _mClient.GetMessageHandler().GetResponse().AppendInteger(ActivityPoints);
+            _mClient.GetMessageHandler().GetResponse().AppendInteger(Duckets);
             _mClient.GetMessageHandler().GetResponse().AppendInteger(change);
             _mClient.GetMessageHandler().GetResponse().AppendInteger(0);
             _mClient.GetMessageHandler().SendResponse();
@@ -1184,7 +1183,9 @@ namespace Yupi.Game.Users
         /// <param name="dbClient">The database client.</param>
         internal void RunDbUpdate(IQueryAdapter dbClient)
         {
-            dbClient.RunFastQuery(string.Concat("UPDATE users SET last_online = '", Yupi.GetUnixTimeStamp(), "', activity_points = '", ActivityPoints, "', credits = '", Credits, "', diamonds = '", Diamonds, "' WHERE id = '", Id, "' LIMIT 1; "));
+            dbClient.RunFastQuery(string.Concat("UPDATE users SET last_online = '", Yupi.GetUnixTimeStamp(),
+                "', activity_points = '", Duckets, "', credits = '", Credits, "', diamonds = '", Diamonds,
+                "' WHERE id = '", Id, "' LIMIT 1; "));
         }
 
         /// <summary>
@@ -1233,22 +1234,26 @@ namespace Yupi.Game.Users
         ///     Gets the current talent level.
         /// </summary>
         /// <returns>System.Int32.</returns>
-        internal int GetCurrentTalentLevel() => Talents.Values.Select(current => Yupi.GetGame().GetTalentManager().GetTalent(current.TalentId).Level).Concat(new[] {1}).Max();
+        internal int GetCurrentTalentLevel()
+            =>
+                Talents.Values.Select(current => Yupi.GetGame().GetTalentManager().GetTalent(current.TalentId).Level)
+                    .Concat(new[] {1})
+                    .Max();
 
         /// <summary>
         ///     _s the load my groups.
         /// </summary>
         internal void _LoadMyGroups()
         {
-            using (IQueryAdapter queryAdapter = Yupi.GetDatabaseManager().GetQueryReactor())
+            using (IQueryAdapter commitableQueryAdapter = Yupi.GetDatabaseManager().GetQueryReactor())
             {
-                queryAdapter.SetQuery($"SELECT id FROM groups_data WHERE owner_id = {Id}");
+                commitableQueryAdapter.SetQuery($"SELECT id FROM groups_data WHERE owner_id = {Id}");
 
-                foreach (DataRow dRow in queryAdapter.GetTable().Rows)
+                foreach (DataRow dRow in commitableQueryAdapter.GetTable().Rows)
                     _myGroups.Add(Convert.ToUInt32(dRow["id"]));
 
                 _loadedMyGroups = true;
-            }          
+            }
         }
 
         /// <summary>
@@ -1256,7 +1261,7 @@ namespace Yupi.Game.Users
         /// </summary>
         /// <param name="pollId">The poll identifier.</param>
         /// <returns><c>true</c> if XXXX, <c>false</c> otherwise.</returns>
-        internal bool GotPollData(uint pollId) => (AnsweredPolls.Contains(pollId));
+        internal bool GotPollData(uint pollId) => AnsweredPolls.Contains(pollId);
 
         /// <summary>
         ///     Checks the trading.
@@ -1270,8 +1275,8 @@ namespace Yupi.Game.Users
             if (TradeLockExpire - Yupi.GetUnixTimeStamp() > 0)
                 return false;
 
-            using (var queryReactor = Yupi.GetDatabaseManager().GetQueryReactor())
-                queryReactor.RunFastQuery($"UPDATE users SET trade_lock = '0' WHERE id = {Id}");
+            using (IQueryAdapter commitableQueryReactor = Yupi.GetDatabaseManager().GetQueryReactor())
+                commitableQueryReactor.RunFastQuery($"UPDATE users SET trade_lock = '0' WHERE id = {Id}");
 
             TradeLocked = false;
             return true;

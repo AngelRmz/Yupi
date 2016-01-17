@@ -53,10 +53,10 @@ namespace Yupi.Game.Items.Wired.Handlers.Conditions
 
         public bool Execute(params object[] stuff)
         {
-            if (!(stuff?[0] is RoomUser))
+            if (!(stuff[0] is RoomUser))
                 return false;
 
-            var roomUser = (RoomUser)stuff[0];
+            RoomUser roomUser = (RoomUser) stuff[0];
 
             int effect;
 

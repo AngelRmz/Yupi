@@ -1,12 +1,32 @@
-﻿#region
+﻿/**
+     Because i love chocolat...                                      
+                                    88 88  
+                                    "" 88  
+                                       88  
+8b       d8 88       88 8b,dPPYba,  88 88  
+`8b     d8' 88       88 88P'    "8a 88 88  
+ `8b   d8'  88       88 88       d8 88 ""  
+  `8b,d8'   "8a,   ,a88 88b,   ,a8" 88 aa  
+    Y88'     `"YbbdP'Y8 88`YbbdP"'  88 88  
+    d8'                 88                 
+   d8'                  88     
+   
+   Private Habbo Hotel Emulating System
+   @author Claudio A. Santoro W.
+   @author Kessiler R.
+   @version dev-beta
+   @license MIT
+   @copyright Sulake Corporation Oy
+   @observation All Rights of Habbo, Habbo Hotel, and all Habbo contents and it's names, is copyright from Sulake
+   Corporation Oy. Yupi! has nothing linked with Sulake. 
+   This Emulator is Only for DEVELOPMENT uses. If you're selling this you're violating Sulakes Copyright.
+*/
 
 using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Numerics;
 using Yupi.Core.Encryption.Utils;
-
-#endregion
 
 namespace Yupi.Core.Encryption.Hurlant.Crypto.Rsa
 {
@@ -30,19 +50,19 @@ namespace Yupi.Core.Encryption.Hurlant.Crypto.Rsa
             Dmq1 = dmq1;
             Coeff = coeff;
 
-            CanEncrypt = (N != 0 && E != 0);
-            CanDecrypt = (CanEncrypt && D != 0);
+            CanEncrypt = N != 0 && E != 0;
+            CanDecrypt = CanEncrypt && D != 0;
         }
 
-        public int E { get; private set; }
+        public int E { get; }
 
-        public BigInteger N { get; private set; }
+        public BigInteger N { get; }
 
-        public BigInteger D { get; private set; }
+        public BigInteger D { get; }
 
-        public BigInteger P { get; private set; }
+        public BigInteger P { get; }
 
-        public BigInteger Q { get; private set; }
+        public BigInteger Q { get; }
 
         public BigInteger Dmp1 { get; private set; }
 
@@ -50,11 +70,8 @@ namespace Yupi.Core.Encryption.Hurlant.Crypto.Rsa
 
         public BigInteger Coeff { get; private set; }
 
-        public static RsaKey ParsePrivateKey(string n, string e,
-            string d,
-            string p = null, string q = null,
-            string dmp1 = null, string dmq1 = null,
-            string coeff = null)
+        public static RsaKey ParsePrivateKey(string n, string e, string d, string p = null, string q = null,
+            string dmp1 = null, string dmq1 = null, string coeff = null)
         {
             if (p == null)
                 return new RsaKey(
@@ -63,6 +80,7 @@ namespace Yupi.Core.Encryption.Hurlant.Crypto.Rsa
                     0, 0,
                     0, 0,
                     0);
+
             return new RsaKey(
                 BigInteger.Parse(n, NumberStyles.HexNumber), Convert.ToInt32(e, 16),
                 BigInteger.Parse(d, NumberStyles.HexNumber),
@@ -71,61 +89,41 @@ namespace Yupi.Core.Encryption.Hurlant.Crypto.Rsa
                 BigInteger.Parse(coeff, NumberStyles.HexNumber));
         }
 
-        public int GetBlockSize()
-        {
-            return N.ToByteArray().Length - 1;
-        }
+        public int GetBlockSize() => N.ToByteArray().Length - 1;
 
-        public byte[] Encrypt(byte[] src)
-        {
-            return DoEncrypt(DoPublic, src, Pkcs1PadType.FullByte);
-        }
+        public byte[] Encrypt(byte[] src) => DoEncrypt(DoPublic, src, Pkcs1PadType.FullByte);
 
-        public byte[] Decrypt(byte[] src)
-        {
-            return DoDecrypt(DoPublic, src, Pkcs1PadType.FullByte);
-        }
+        public byte[] Decrypt(byte[] src) => DoDecrypt(DoPublic, src, Pkcs1PadType.FullByte);
 
-        public byte[] Sign(byte[] src)
-        {
-            return DoEncrypt(DoPrivate, src, Pkcs1PadType.FullByte);
-        }
+        public byte[] Sign(byte[] src) => DoEncrypt(DoPrivate, src, Pkcs1PadType.FullByte);
 
-        public byte[] Verify(byte[] src)
-        {
-            return DoDecrypt(DoPrivate, src, Pkcs1PadType.FullByte);
-        }
+        public byte[] Verify(byte[] src) => DoDecrypt(DoPrivate, src, Pkcs1PadType.FullByte);
 
-        protected BigInteger DoPublic(BigInteger m)
-        {
-            return BigInteger.ModPow(m, E, N);
-        }
+        protected BigInteger DoPublic(BigInteger m) => BigInteger.ModPow(m, E, N);
 
-        protected BigInteger DoPrivate(BigInteger m)
-        {
-            if (P != 0 || Q != 0)
-                return 0;
-            return BigInteger.ModPow(m, D, N);
-        }
+        protected BigInteger DoPrivate(BigInteger m) => P != 0 || Q != 0 ? BigInteger.ModPow(m, D, N) : 0;
 
         private byte[] DoEncrypt(DoCalculateionDelegate method, byte[] src, Pkcs1PadType type)
         {
             try
             {
-                var bl = GetBlockSize();
+                int bl = GetBlockSize();
 
-                var paddedBytes = Pkcs1Pad(src, bl, type);
+                byte[] paddedBytes = Pkcs1Pad(src, bl, type);
+
                 Array.Reverse(paddedBytes);
-                var m = new BigInteger(paddedBytes);
+
+                BigInteger m = new BigInteger(paddedBytes);
 
                 if (m == 0)
                     return null;
 
-                var c = method(m);
-                var data = c.ToByteArray();
+                BigInteger c = method(m);
+                byte[] data = c.ToByteArray();
 
                 if (data[data.Length - 1] == 0)
                     Array.Resize(ref data, data.Length - 1);
+
                 Array.Reverse(data);
 
                 return c == 0 ? null : data;
@@ -140,17 +138,19 @@ namespace Yupi.Core.Encryption.Hurlant.Crypto.Rsa
         {
             try
             {
-                var c = new BigInteger(src);
+                BigInteger c = new BigInteger(src);
 
-                var m = method(c);
+                BigInteger m = method(c);
+
                 if (m == 0)
                     return null;
 
-                var bl = GetBlockSize();
-                var data = m.ToByteArray();
+                int bl = GetBlockSize();
+                byte[] data = m.ToByteArray();
+
                 Array.Reverse(data);
 
-                var bytes = Pkcs1Unpad(data, bl, type);
+                byte[] bytes = Pkcs1Unpad(data, bl, type);
 
                 return bytes;
             }
@@ -162,9 +162,9 @@ namespace Yupi.Core.Encryption.Hurlant.Crypto.Rsa
 
         private static byte[] Pkcs1Pad(IList<byte> src, int n, Pkcs1PadType type)
         {
-            var bytes = new byte[n];
+            byte[] bytes = new byte[n];
 
-            var i = src.Count - 1;
+            int i = src.Count - 1;
             while (i >= 0 && n > 11)
                 bytes[--n] = src[i--];
 
@@ -185,7 +185,7 @@ namespace Yupi.Core.Encryption.Hurlant.Crypto.Rsa
                 bytes[--n] = x;
             }
 
-            bytes[--n] = (byte)type;
+            bytes[--n] = (byte) type;
             bytes[--n] = 0;
 
             return bytes;
@@ -193,7 +193,7 @@ namespace Yupi.Core.Encryption.Hurlant.Crypto.Rsa
 
         private static byte[] Pkcs1Unpad(byte[] src, int n, Pkcs1PadType type)
         {
-            var i = 0;
+            int i = 0;
             while (i < src.Length && src[i] == 0)
                 ++i;
 
@@ -210,8 +210,8 @@ namespace Yupi.Core.Encryption.Hurlant.Crypto.Rsa
                 if (++i >= src.Length)
                     Console.WriteLine("PKCS#1 unpad: i={0}, src[i-1]!=0 (={1})", i, src[i - 1].ToString("X"));
 
-            var bytes = new byte[src.Length - i - 1];
-            for (var p = 0; ++i < src.Length; p++)
+            byte[] bytes = new byte[src.Length - i - 1];
+            for (int p = 0; ++i < src.Length; p++)
                 bytes[p] = src[i];
 
             return bytes;

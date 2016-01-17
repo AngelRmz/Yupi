@@ -1,3 +1,27 @@
+/**
+     Because i love chocolat...                                      
+                                    88 88  
+                                    "" 88  
+                                       88  
+8b       d8 88       88 8b,dPPYba,  88 88  
+`8b     d8' 88       88 88P'    "8a 88 88  
+ `8b   d8'  88       88 88       d8 88 ""  
+  `8b,d8'   "8a,   ,a88 88b,   ,a8" 88 aa  
+    Y88'     `"YbbdP'Y8 88`YbbdP"'  88 88  
+    d8'                 88                 
+   d8'                  88     
+   
+   Private Habbo Hotel Emulating System
+   @author Claudio A. Santoro W.
+   @author Kessiler R.
+   @version dev-beta
+   @license MIT
+   @copyright Sulake Corporation Oy
+   @observation All Rights of Habbo, Habbo Hotel, and all Habbo contents and it's names, is copyright from Sulake
+   Corporation Oy. Yupi! has nothing linked with Sulake. 
+   This Emulator is Only for DEVELOPMENT uses. If you're selling this you're violating Sulakes Copyright.
+*/
+
 using System;
 using Yupi.Data;
 using Yupi.Net.Packets;
@@ -6,17 +30,17 @@ using Yupi.Net.Sockets;
 namespace Yupi.Net.Connection
 {
     /// <summary>
-    /// Class ConnectionHandler.
+    ///     Class ConnectionHandler.
     /// </summary>
     public class ConnectionHandler
     {
         /// <summary>
-        /// The manager
+        ///     The manager
         /// </summary>
         public SocketConnectionManager Manager;
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="ConnectionHandler"/> class.
+        ///     Initializes a new instance of the <see cref="ConnectionHandler" /> class.
         /// </summary>
         /// <param name="port">The port.</param>
         /// <param name="maxConnections">The maximum connections.</param>
@@ -34,7 +58,7 @@ namespace Yupi.Net.Connection
         }
 
         /// <summary>
-        /// Managers the connection event.
+        ///     Managers the connection event.
         /// </summary>
         /// <param name="connection">The connection.</param>
         private static void OnClientConnected(ConnectionData connection)
@@ -45,12 +69,12 @@ namespace Yupi.Net.Connection
             }
             catch (Exception ex)
             {
-                ServerLogManager.HandleException(ex, "Yupi.Configuration.ConnectionHandling");
+                ServerLogManager.LogException(ex, "Yupi.Net.Connection.ConnectionHandler.ConnectionHandling");
             }
         }
 
         /// <summary>
-        /// Closes the connection.
+        ///     Closes the connection.
         /// </summary>
         /// <param name="connection">The connection.</param>
         /// <param name="exception"></param>
@@ -62,16 +86,13 @@ namespace Yupi.Net.Connection
             }
             catch (Exception ex)
             {
-                ServerLogManager.HandleException(ex, "Yupi.Configuration.ConnectionHandling");
+                ServerLogManager.LogException(ex, "Yupi.Net.Connection.ConnectionHandler.ConnectionHandling");
             }
         }
 
         /// <summary>
-        /// Destroys this instance.
+        ///     Destroys this instance.
         /// </summary>
-        internal void Destroy()
-        {
-            Manager.Destroy();
-        }
+        internal void Destroy() => Manager.Destroy();
     }
 }

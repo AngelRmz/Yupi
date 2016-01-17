@@ -48,7 +48,7 @@ namespace Yupi.Game.Quests
         /// <summary>
         ///     The reward
         /// </summary>
-        internal readonly int Reward;
+        internal readonly uint Reward;
 
         /// <summary>
         ///     The reward type
@@ -86,7 +86,7 @@ namespace Yupi.Game.Quests
             DataBit = dataBit;
             RewardType = rewardType;
             TimeUnlock = timeUnlock;
-            HasEnded = (timeLock >= Yupi.GetUnixTimeStamp() && timeLock > 0);
+            HasEnded = timeLock >= Yupi.GetUnixTimeStamp() && timeLock > 0;
         }
 
         /// <summary>

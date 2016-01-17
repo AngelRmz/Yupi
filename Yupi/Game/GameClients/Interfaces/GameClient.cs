@@ -2,9 +2,11 @@ using System;
 using System.Linq;
 using Yupi.Core.Security;
 using Yupi.Core.Security.BlackWords.Structs;
-using Yupi.Core.Settings;
 using Yupi.Data;
+using Yupi.Data.Base.Adapters.Interfaces;
+using Yupi.Game.Rooms.User;
 using Yupi.Game.Users;
+using Yupi.Game.Users.Data.Models;
 using Yupi.Game.Users.Factories;
 using Yupi.Messages;
 using Yupi.Messages.Enums;
@@ -108,12 +110,17 @@ namespace Yupi.Game.GameClients.Interfaces
                 serverMessage.AppendString("title");
                 serverMessage.AppendString("Staff Internal Alert");
                 serverMessage.AppendString("message");
-                serverMessage.AppendString("O usuário " + GetHabbo().UserName + " Foi banido por enviar repetidamente palavras repetidas. A última palavra foi: " +
+                serverMessage.AppendString("O usuário " + GetHabbo().UserName +
+                                           " Foi banido por enviar repetidamente palavras repetidas. A última palavra foi: " +
                                            word + ", na frase: " + message);
 
                 Yupi.GetGame().GetClientManager().StaffAlert(serverMessage);
 
-                Yupi.GetGame().GetBanManager().BanUser(this, GetHabbo().UserName, 3600, "Você está passando muitos spams de outros hotéis. Por esta razão, sancioná-lo por 1 hora, de modo que você aprender a controlar-se.", false, false);
+                Yupi.GetGame()
+                    .GetBanManager()
+                    .BanUser(this, GetHabbo().UserName, 3600,
+                        "Você está passando muitos spams de outros hotéis. Por esta razão, sancioná-lo por 1 hora, de modo que você aprender a controlar-se.",
+                        false, false);
                 return;
             }
 
@@ -122,7 +129,7 @@ namespace Yupi.Game.GameClients.Interfaces
 
             // Queremos que os Staffs Saibam desses dados.
 
-            var alert = settings.Alert.Replace("{0}", GetHabbo().UserName);
+            string alert = settings.Alert.Replace("{0}", GetHabbo().UserName);
 
             alert = alert.Replace("{1}", GetHabbo().Id.ToString());
             alert = alert.Replace("{2}", word);
@@ -181,12 +188,12 @@ namespace Yupi.Game.GameClients.Interfaces
 
             TimePingedReceived = DateTime.Now;
 
-            var packetParser = _connection.Parser as InitialPacketParser;
+            InitialPacketParser packetParser = _connection.Parser as InitialPacketParser;
 
             if (packetParser != null)
                 packetParser.PolicyRequest += PolicyRequest;
 
-            var initialPacketParser = _connection.Parser as InitialPacketParser;
+            InitialPacketParser initialPacketParser = _connection.Parser as InitialPacketParser;
 
             if (initialPacketParser != null)
                 initialPacketParser.SwitchParserRequest += SwitchParserRequest;
@@ -211,11 +218,11 @@ namespace Yupi.Game.GameClients.Interfaces
         {
             try
             {
-                var ip = GetConnection().GetIp();
+                string ip = GetConnection().GetIp();
 
                 uint errorCode;
 
-                var userData = UserDataFactory.GetUserData(authTicket, out errorCode);
+                UserData userData = UserDataFactory.GetUserData(authTicket, out errorCode);
 
                 if (errorCode == 1 || errorCode == 2)
                     return false;
@@ -225,44 +232,49 @@ namespace Yupi.Game.GameClients.Interfaces
                 _habbo = userData.User;
                 userData.User.LoadData(userData);
 
-                var banReason = Yupi.GetGame().GetBanManager().GetBanReason(userData.User.UserName, ip, MachineId);
+                string banReason = Yupi.GetGame().GetBanManager().GetBanReason(userData.User.UserName, ip, MachineId);
 
                 if (!string.IsNullOrEmpty(banReason) || userData.User.UserName == null)
                 {
                     SendNotifWithScroll(banReason);
-                    using (var queryReactor = Yupi.GetDatabaseManager().GetQueryReactor())
+                    using (IQueryAdapter commitableQueryReactor = Yupi.GetDatabaseManager().GetQueryReactor())
                     {
-                        queryReactor.SetQuery($"SELECT ip_last FROM users WHERE id={GetHabbo().Id} LIMIT 1");
+                        commitableQueryReactor.SetQuery($"SELECT ip_last FROM users WHERE id={GetHabbo().Id} LIMIT 1");
 
-                        var supaString = queryReactor.GetString();
+                        string supaString = commitableQueryReactor.GetString();
 
-                        queryReactor.SetQuery($"SELECT COUNT(0) FROM users_bans_access WHERE user_id={_habbo.Id} LIMIT 1");
-                        var integer = queryReactor.GetInteger();
+                        commitableQueryReactor.SetQuery(
+                            $"SELECT COUNT(0) FROM users_bans_access WHERE user_id={_habbo.Id} LIMIT 1");
+                        int integer = commitableQueryReactor.GetInteger();
 
                         if (integer > 0)
-                            queryReactor.RunFastQuery("UPDATE users_bans_access SET attempts = attempts + 1, ip='" + supaString + "' WHERE user_id=" + GetHabbo().Id + " LIMIT 1");
+                            commitableQueryReactor.RunFastQuery(
+                                "UPDATE users_bans_access SET attempts = attempts + 1, ip='" + supaString +
+                                "' WHERE user_id=" + GetHabbo().Id + " LIMIT 1");
                         else
-                            queryReactor.RunFastQuery("INSERT INTO users_bans_access (user_id, ip) VALUES (" + GetHabbo().Id + ", '" + supaString + "')");
+                            commitableQueryReactor.RunFastQuery("INSERT INTO users_bans_access (user_id, ip) VALUES (" +
+                                                                GetHabbo().Id + ", '" + supaString + "')");
                     }
 
                     return false;
                 }
 
-                using (var queryReactor = Yupi.GetDatabaseManager().GetQueryReactor())
-                    queryReactor.RunFastQuery($"UPDATE users SET ip_last='{ip}' WHERE id={GetHabbo().Id}");
+                using (IQueryAdapter commitableQueryReactor = Yupi.GetDatabaseManager().GetQueryReactor())
+                    commitableQueryReactor.RunFastQuery($"UPDATE users SET ip_last='{ip}' WHERE id={GetHabbo().Id}");
 
                 userData.User.Init(this, userData);
 
-                var queuedServerMessage = new QueuedServerMessage(_connection);
+                QueuedServerMessage queuedServerMessage = new QueuedServerMessage(_connection);
 
-                var serverMessage = new ServerMessage(LibraryParser.OutgoingRequest("UniqueMachineIDMessageComposer"));
+                ServerMessage serverMessage = new ServerMessage(LibraryParser.OutgoingRequest("UniqueMachineIDMessageComposer"));
 
                 serverMessage.AppendString(MachineId);
                 queuedServerMessage.AppendResponse(serverMessage);
 
-                queuedServerMessage.AppendResponse(new ServerMessage(LibraryParser.OutgoingRequest("AuthenticationOKMessageComposer")));
+                queuedServerMessage.AppendResponse(
+                    new ServerMessage(LibraryParser.OutgoingRequest("AuthenticationOKMessageComposer")));
 
-                var serverMessage2 = new ServerMessage(LibraryParser.OutgoingRequest("HomeRoomMessageComposer"));
+                ServerMessage serverMessage2 = new ServerMessage(LibraryParser.OutgoingRequest("HomeRoomMessageComposer"));
 
                 serverMessage2.AppendInteger(_habbo.HomeRoom);
                 serverMessage2.AppendInteger(_habbo.HomeRoom);
@@ -283,13 +295,13 @@ namespace Yupi.Game.GameClients.Interfaces
                 {
                     serverMessage.AppendInteger(userData.User.FavoriteRooms.Count);
 
-                    foreach (var i in userData.User.FavoriteRooms)
+                    foreach (uint i in userData.User.FavoriteRooms)
                         serverMessage.AppendInteger(i);
                 }
 
                 queuedServerMessage.AppendResponse(serverMessage);
 
-                var rightsMessage = new ServerMessage(LibraryParser.OutgoingRequest("UserClubRightsMessageComposer"));
+                ServerMessage rightsMessage = new ServerMessage(LibraryParser.OutgoingRequest("UserClubRightsMessageComposer"));
 
                 rightsMessage.AppendInteger(userData.User.GetSubscriptionManager().HasSubscription ? 2 : 0);
                 rightsMessage.AppendInteger(userData.User.Rank);
@@ -309,7 +321,7 @@ namespace Yupi.Game.GameClients.Interfaces
                 serverMessage = new ServerMessage(LibraryParser.OutgoingRequest("ActivityPointsMessageComposer"));
                 serverMessage.AppendInteger(2);
                 serverMessage.AppendInteger(0);
-                serverMessage.AppendInteger(userData.User.ActivityPoints);
+                serverMessage.AppendInteger(userData.User.Duckets);
                 serverMessage.AppendInteger(5);
                 serverMessage.AppendInteger(userData.User.Diamonds);
                 queuedServerMessage.AppendResponse(serverMessage);
@@ -318,9 +330,6 @@ namespace Yupi.Game.GameClients.Interfaces
                     queuedServerMessage.AppendResponse(Yupi.GetGame().GetModerationTool().SerializeTool(this));
 
                 queuedServerMessage.AppendResponse(Yupi.GetGame().GetAchievementManager().AchievementDataCached);
-
-                if (!GetHabbo().NuxPassed && ServerExtraSettings.NewUsersGiftsEnabled)
-                    queuedServerMessage.AppendResponse( new ServerMessage(LibraryParser.OutgoingRequest("NuxSuggestFreeGiftsMessageComposer")));
 
                 queuedServerMessage.AppendResponse(GetHabbo().GetAvatarEffectsInventoryComponent().GetPacket());
                 queuedServerMessage.SendResponse();
@@ -345,7 +354,7 @@ namespace Yupi.Game.GameClients.Interfaces
         /// <param name="message">The message.</param>
         internal void SendNotifWithScroll(string message)
         {
-            var serverMessage = new ServerMessage(LibraryParser.OutgoingRequest("MOTDNotificationMessageComposer"));
+            ServerMessage serverMessage = new ServerMessage(LibraryParser.OutgoingRequest("MOTDNotificationMessageComposer"));
 
             serverMessage.AppendInteger(1);
             serverMessage.AppendString(message);
@@ -358,7 +367,7 @@ namespace Yupi.Game.GameClients.Interfaces
         /// <param name="message">The message.</param>
         internal void SendBroadcastMessage(string message)
         {
-            var serverMessage = new ServerMessage(LibraryParser.OutgoingRequest("BroadcastNotifMessageComposer"));
+            ServerMessage serverMessage = new ServerMessage(LibraryParser.OutgoingRequest("BroadcastNotifMessageComposer"));
 
             serverMessage.AppendString(message);
             serverMessage.AppendString(string.Empty);
@@ -371,7 +380,7 @@ namespace Yupi.Game.GameClients.Interfaces
         /// <param name="message">The message.</param>
         internal void SendModeratorMessage(string message)
         {
-            var serverMessage = new ServerMessage(LibraryParser.OutgoingRequest("AlertNotificationMessageComposer"));
+            ServerMessage serverMessage = new ServerMessage(LibraryParser.OutgoingRequest("AlertNotificationMessageComposer"));
 
             serverMessage.AppendString(message);
             serverMessage.AppendString(string.Empty);
@@ -388,12 +397,12 @@ namespace Yupi.Game.GameClients.Interfaces
             if (GetHabbo() == null || GetHabbo().CurrentRoom == null)
                 return;
 
-            var roomUserByHabbo = GetHabbo().CurrentRoom.GetRoomUserManager().GetRoomUserByHabbo(GetHabbo().UserName);
+            RoomUser roomUserByHabbo = GetHabbo().CurrentRoom.GetRoomUserManager().GetRoomUserByHabbo(GetHabbo().UserName);
 
             if (roomUserByHabbo == null)
                 return;
 
-            var whisp = new ServerMessage(LibraryParser.OutgoingRequest("WhisperMessageComposer"));
+            ServerMessage whisp = new ServerMessage(LibraryParser.OutgoingRequest("WhisperMessageComposer"));
 
             whisp.AppendInteger(roomUserByHabbo.VirtualId);
             whisp.AppendString(message);
@@ -425,7 +434,9 @@ namespace Yupi.Game.GameClients.Interfaces
         /// <returns>System.Byte[].</returns>
         public static byte[] GetBytesNotif(string message, string title = "Aviso", string picture = "")
         {
-            using (var serverMessage = new ServerMessage(LibraryParser.OutgoingRequest("SuperNotificationMessageComposer")))
+            using (
+                ServerMessage serverMessage = new ServerMessage(LibraryParser.OutgoingRequest("SuperNotificationMessageComposer"))
+                )
             {
                 serverMessage.AppendString(picture);
                 serverMessage.AppendInteger(4);
@@ -467,8 +478,8 @@ namespace Yupi.Game.GameClients.Interfaces
         {
             if (GetHabbo() != null)
             {
-                using (var queryReactor = Yupi.GetDatabaseManager().GetQueryReactor())
-                    queryReactor.RunFastQuery(GetHabbo().GetQueryString);
+                using (IQueryAdapter commitableQueryReactor = Yupi.GetDatabaseManager().GetQueryReactor())
+                    commitableQueryReactor.RunFastQuery(GetHabbo().GetQueryString);
                 GetHabbo().OnDisconnect(reason);
             }
 
@@ -491,7 +502,7 @@ namespace Yupi.Game.GameClients.Interfaces
             if (GetConnection() == null)
                 return;
 
-            var bytes = message.GetReversedBytes();
+            byte[] bytes = message.GetReversedBytes();
 
             GetConnection().SendData(bytes);
         }

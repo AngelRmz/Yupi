@@ -54,28 +54,28 @@ namespace Yupi.Game.Items.Wired.Handlers
             switch (state)
             {
                 case MovementState.Down:
-                    {
-                        coordinate.Y++;
-                        break;
-                    }
+                {
+                    coordinate.Y++;
+                    break;
+                }
 
                 case MovementState.Up:
-                    {
-                        coordinate.Y--;
-                        break;
-                    }
+                {
+                    coordinate.Y--;
+                    break;
+                }
 
                 case MovementState.Left:
-                    {
-                        coordinate.X--;
-                        break;
-                    }
+                {
+                    coordinate.X--;
+                    break;
+                }
 
                 case MovementState.Right:
-                    {
-                        coordinate.X++;
-                        break;
-                    }
+                {
+                    coordinate.X++;
+                    break;
+                }
             }
         }
 
@@ -84,62 +84,62 @@ namespace Yupi.Game.Items.Wired.Handlers
             switch (state)
             {
                 case MovementDirection.Down:
-                    {
-                        coordinate.Y++;
-                        break;
-                    }
+                {
+                    coordinate.Y++;
+                    break;
+                }
 
                 case MovementDirection.Up:
-                    {
-                        coordinate.Y--;
-                        break;
-                    }
+                {
+                    coordinate.Y--;
+                    break;
+                }
 
                 case MovementDirection.Left:
-                    {
-                        coordinate.X--;
-                        break;
-                    }
+                {
+                    coordinate.X--;
+                    break;
+                }
 
                 case MovementDirection.Right:
-                    {
-                        coordinate.X++;
-                        break;
-                    }
+                {
+                    coordinate.X++;
+                    break;
+                }
 
                 case MovementDirection.DownRight:
-                    {
-                        coordinate.X++;
-                        coordinate.Y++;
-                        break;
-                    }
+                {
+                    coordinate.X++;
+                    coordinate.Y++;
+                    break;
+                }
 
                 case MovementDirection.DownLeft:
-                    {
-                        coordinate.X--;
-                        coordinate.Y++;
-                        break;
-                    }
+                {
+                    coordinate.X--;
+                    coordinate.Y++;
+                    break;
+                }
 
                 case MovementDirection.UpRight:
-                    {
-                        coordinate.X++;
-                        coordinate.Y--;
-                        break;
-                    }
+                {
+                    coordinate.X++;
+                    coordinate.Y--;
+                    break;
+                }
 
                 case MovementDirection.UpLeft:
-                    {
-                        coordinate.X--;
-                        coordinate.Y--;
-                        break;
-                    }
+                {
+                    coordinate.X--;
+                    coordinate.Y--;
+                    break;
+                }
             }
         }
 
         public static Point HandleMovement(Point newCoordinate, MovementState state, int newRotation)
         {
-            var newPoint = new Point(newCoordinate.X, newCoordinate.Y);
+            Point newPoint = new Point(newCoordinate.X, newCoordinate.Y);
 
             switch (state)
             {
@@ -147,57 +147,57 @@ namespace Yupi.Game.Items.Wired.Handlers
                 case MovementState.Down:
                 case MovementState.Left:
                 case MovementState.Right:
-                    {
-                        HandleMovement(ref newPoint, state);
-                        break;
-                    }
+                {
+                    HandleMovement(ref newPoint, state);
+                    break;
+                }
 
                 case MovementState.LeftRight:
-                    {
-                        if (Yupi.GetRandomNumber(0, 2) == 1)
-                            HandleMovement(ref newPoint, MovementState.Left);
-                        else
-                            HandleMovement(ref newPoint, MovementState.Right);
-                        break;
-                    }
+                {
+                    if (Yupi.GetRandomNumber(0, 2) == 1)
+                        HandleMovement(ref newPoint, MovementState.Left);
+                    else
+                        HandleMovement(ref newPoint, MovementState.Right);
+                    break;
+                }
 
                 case MovementState.UpDown:
-                    {
-                        if (Yupi.GetRandomNumber(0, 2) == 1)
-                            HandleMovement(ref newPoint, MovementState.Up);
-                        else
-                            HandleMovement(ref newPoint, MovementState.Down);
-                        break;
-                    }
+                {
+                    if (Yupi.GetRandomNumber(0, 2) == 1)
+                        HandleMovement(ref newPoint, MovementState.Up);
+                    else
+                        HandleMovement(ref newPoint, MovementState.Down);
+                    break;
+                }
 
                 case MovementState.Random:
+                {
+                    switch (Yupi.GetRandomNumber(1, 5))
                     {
-                        switch (Yupi.GetRandomNumber(1, 5))
+                        case 1:
                         {
-                            case 1:
-                                {
-                                    HandleMovement(ref newPoint, MovementState.Up);
-                                    break;
-                                }
-                            case 2:
-                                {
-                                    HandleMovement(ref newPoint, MovementState.Down);
-                                    break;
-                                }
-
-                            case 3:
-                                {
-                                    HandleMovement(ref newPoint, MovementState.Left);
-                                    break;
-                                }
-                            case 4:
-                                {
-                                    HandleMovement(ref newPoint, MovementState.Right);
-                                    break;
-                                }
+                            HandleMovement(ref newPoint, MovementState.Up);
+                            break;
                         }
-                        break;
+                        case 2:
+                        {
+                            HandleMovement(ref newPoint, MovementState.Down);
+                            break;
+                        }
+
+                        case 3:
+                        {
+                            HandleMovement(ref newPoint, MovementState.Left);
+                            break;
+                        }
+                        case 4:
+                        {
+                            HandleMovement(ref newPoint, MovementState.Right);
+                            break;
+                        }
                     }
+                    break;
+                }
             }
 
             return newPoint;
@@ -205,7 +205,7 @@ namespace Yupi.Game.Items.Wired.Handlers
 
         public static Point HandleMovementDir(Point newCoordinate, MovementDirection state, int newRotation)
         {
-            var newPoint = new Point(newCoordinate.X, newCoordinate.Y);
+            Point newPoint = new Point(newCoordinate.X, newCoordinate.Y);
 
             switch (state)
             {
@@ -217,39 +217,39 @@ namespace Yupi.Game.Items.Wired.Handlers
                 case MovementDirection.DownLeft:
                 case MovementDirection.UpRight:
                 case MovementDirection.UpLeft:
-                    {
-                        HandleMovementDir(ref newPoint, state);
-                        break;
-                    }
+                {
+                    HandleMovementDir(ref newPoint, state);
+                    break;
+                }
 
                 case MovementDirection.Random:
+                {
+                    switch (Yupi.GetRandomNumber(1, 5))
                     {
-                        switch (Yupi.GetRandomNumber(1, 5))
+                        case 1:
                         {
-                            case 1:
-                                {
-                                    HandleMovementDir(ref newPoint, MovementDirection.Up);
-                                    break;
-                                }
-                            case 2:
-                                {
-                                    HandleMovementDir(ref newPoint, MovementDirection.Down);
-                                    break;
-                                }
-
-                            case 3:
-                                {
-                                    HandleMovementDir(ref newPoint, MovementDirection.Left);
-                                    break;
-                                }
-                            case 4:
-                                {
-                                    HandleMovementDir(ref newPoint, MovementDirection.Right);
-                                    break;
-                                }
+                            HandleMovementDir(ref newPoint, MovementDirection.Up);
+                            break;
                         }
-                        break;
+                        case 2:
+                        {
+                            HandleMovementDir(ref newPoint, MovementDirection.Down);
+                            break;
+                        }
+
+                        case 3:
+                        {
+                            HandleMovementDir(ref newPoint, MovementDirection.Left);
+                            break;
+                        }
+                        case 4:
+                        {
+                            HandleMovementDir(ref newPoint, MovementDirection.Right);
+                            break;
+                        }
                     }
+                    break;
+                }
             }
 
             return newPoint;
@@ -257,29 +257,29 @@ namespace Yupi.Game.Items.Wired.Handlers
 
         public static int HandleRotation(int oldRotation, RotationState state)
         {
-            var rotation = oldRotation;
+            int rotation = oldRotation;
             switch (state)
             {
                 case RotationState.ClocWise:
-                    {
-                        HandleClockwiseRotation(ref rotation);
-                        return rotation;
-                    }
+                {
+                    HandleClockwiseRotation(ref rotation);
+                    return rotation;
+                }
 
                 case RotationState.CounterClockWise:
-                    {
-                        HandleCounterClockwiseRotation(ref rotation);
-                        return rotation;
-                    }
+                {
+                    HandleCounterClockwiseRotation(ref rotation);
+                    return rotation;
+                }
 
                 case RotationState.Random:
-                    {
-                        if (Yupi.GetRandomNumber(0, 3) == 1)
-                            HandleClockwiseRotation(ref rotation);
-                        else
-                            HandleCounterClockwiseRotation(ref rotation);
-                        return rotation;
-                    }
+                {
+                    if (Yupi.GetRandomNumber(0, 3) == 1)
+                        HandleClockwiseRotation(ref rotation);
+                    else
+                        HandleCounterClockwiseRotation(ref rotation);
+                    return rotation;
+                }
             }
 
             return rotation;

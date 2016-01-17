@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Data;
+using Yupi.Data.Base.Adapters.Interfaces;
 using Yupi.Game.Items.Interfaces;
 using Yupi.Messages;
 
@@ -27,21 +28,22 @@ namespace Yupi.Game.Items.Datas
         internal HighscoreData(RoomItem roomItem)
         {
             Lines = new Dictionary<int, HighScoreLine>();
-            var itemId = roomItem.Id;
+            uint itemId = roomItem.Id;
 
-            using (var queryReactor = Yupi.GetDatabaseManager().GetQueryReactor())
+            using (IQueryAdapter commitableQueryReactor = Yupi.GetDatabaseManager().GetQueryReactor())
             {
-                queryReactor.SetQuery("SELECT * FROM items_highscores WHERE item_id=" + itemId + " ORDER BY score DESC");
+                commitableQueryReactor.SetQuery("SELECT * FROM items_highscores WHERE item_id=" + itemId +
+                                                " ORDER BY score DESC");
 
-                var table = queryReactor.GetTable();
+                DataTable table = commitableQueryReactor.GetTable();
 
                 if (table == null)
                     return;
 
                 foreach (DataRow row in table.Rows)
                 {
-                    Lines.Add((int)row["id"], new HighScoreLine((string)row["username"], (int)row["score"]));
-                    LastId = (int)row["id"];
+                    Lines.Add((int) row["id"], new HighScoreLine((string) row["username"], (int) row["score"]));
+                    LastId = (int) row["id"];
                 }
             }
         }
@@ -67,7 +69,7 @@ namespace Yupi.Game.Items.Datas
             message.AppendInteger(0); //Time : ["alltime", "daily", "weekly", "monthly"]
             message.AppendInteger(Lines.Count); //Count
 
-            foreach (var line in Lines)
+            foreach (KeyValuePair<int, HighScoreLine> line in Lines)
             {
                 message.AppendInteger(line.Value.Score);
                 message.AppendInteger(1);
@@ -85,45 +87,45 @@ namespace Yupi.Game.Items.Datas
         /// <param name="score">The score.</param>
         internal void AddUserScore(RoomItem item, string username, int score)
         {
-            using (var queryReactor = Yupi.GetDatabaseManager().GetQueryReactor())
+            using (IQueryAdapter commitableQueryReactor = Yupi.GetDatabaseManager().GetQueryReactor())
             {
                 if (item.GetBaseItem().Name.StartsWith("highscore_classic"))
                 {
-                    queryReactor.SetQuery(
+                    commitableQueryReactor.SetQuery(
                         "INSERT INTO items_highscores (item_id,username,score) VALUES (@itemid,@username,@score)");
-                    queryReactor.AddParameter("itemid", item.Id);
-                    queryReactor.AddParameter("username", username);
-                    queryReactor.AddParameter("score", score);
-                    queryReactor.RunQuery();
+                    commitableQueryReactor.AddParameter("itemid", item.Id);
+                    commitableQueryReactor.AddParameter("username", username);
+                    commitableQueryReactor.AddParameter("score", score);
+                    commitableQueryReactor.RunQuery();
                 }
                 else if (item.GetBaseItem().Name.StartsWith("highscore_mostwin"))
                 {
                     score = 1;
-                    queryReactor.SetQuery(
+                    commitableQueryReactor.SetQuery(
                         "SELECT id,score FROM items_highscores WHERE username = @username AND item_id = @itemid");
-                    queryReactor.AddParameter("itemid", item.Id);
-                    queryReactor.AddParameter("username", username);
+                    commitableQueryReactor.AddParameter("itemid", item.Id);
+                    commitableQueryReactor.AddParameter("username", username);
 
-                    var row = queryReactor.GetRow();
+                    DataRow row = commitableQueryReactor.GetRow();
 
                     if (row != null)
                     {
-                        queryReactor.SetQuery(
+                        commitableQueryReactor.SetQuery(
                             "UPDATE items_highscores SET score = score + 1 WHERE username = @username AND item_id = @itemid");
-                        queryReactor.AddParameter("itemid", item.Id);
-                        queryReactor.AddParameter("username", username);
-                        queryReactor.RunQuery();
-                        Lines.Remove((int)row["id"]);
-                        score = (int)row["score"] + 1;
+                        commitableQueryReactor.AddParameter("itemid", item.Id);
+                        commitableQueryReactor.AddParameter("username", username);
+                        commitableQueryReactor.RunQuery();
+                        Lines.Remove((int) row["id"]);
+                        score = (int) row["score"] + 1;
                     }
                     else
                     {
-                        queryReactor.SetQuery(
+                        commitableQueryReactor.SetQuery(
                             "INSERT INTO items_highscores (item_id,username,score) VALUES (@itemid,@username,@score)");
-                        queryReactor.AddParameter("itemid", item.Id);
-                        queryReactor.AddParameter("username", username);
-                        queryReactor.AddParameter("score", score);
-                        queryReactor.RunQuery();
+                        commitableQueryReactor.AddParameter("itemid", item.Id);
+                        commitableQueryReactor.AddParameter("username", username);
+                        commitableQueryReactor.AddParameter("score", score);
+                        commitableQueryReactor.RunQuery();
                     }
                 }
 

@@ -60,22 +60,24 @@
     <ApplicationManifest>Properties\app.manifest</ApplicationManifest>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x86'">
-    <OutputPath>bin\Debug\x86\</OutputPath>
+    <OutputPath>Build\Executables\x86\</OutputPath>
     <Prefer32Bit>true</Prefer32Bit>
     <DefineConstants>TRACE;DEBUG</DefineConstants>
     <Optimize>true</Optimize>
     <ErrorReport>prompt</ErrorReport>
     <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
     <DebugType>full</DebugType>
     <DebugSymbols>true</DebugSymbols>
+    <PlatformTarget>x86</PlatformTarget>
+    <LangVersion>6</LangVersion>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">
     <DebugSymbols>true</DebugSymbols>
-    <OutputPath>bin\Debug\x64\</OutputPath>
+    <OutputPath>Build\Executables\x64\</OutputPath>
     <DefineConstants>TRACE;DEBUG</DefineConstants>
-    <Optimize>false</Optimize>
-    <FileAlignment>2048</FileAlignment>
+    <Optimize>true</Optimize>
+    <FileAlignment>4096</FileAlignment>
     <DebugType>full</DebugType>
     <PlatformTarget>x64</PlatformTarget>
     <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
@@ -88,7 +90,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x86'">
     <DebugSymbols>false</DebugSymbols>
-    <OutputPath>bin\Release\x86\</OutputPath>
+    <OutputPath>Build\Executables\x86\</OutputPath>
     <DefineConstants>
     </DefineConstants>
     <Optimize>true</Optimize>
@@ -105,7 +107,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'">
     <DebugSymbols>false</DebugSymbols>
-    <OutputPath>bin\Release\x64\</OutputPath>
+    <OutputPath>Build\Executables\x64\</OutputPath>
     <DefineConstants>
     </DefineConstants>
     <Optimize>true</Optimize>
@@ -121,21 +123,21 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|AnyCPU'">
     <DebugSymbols>true</DebugSymbols>
-    <OutputPath>bin\Debug\AnyCPU\</OutputPath>
+    <OutputPath>Build\Executables\AnyCPU\</OutputPath>
     <DefineConstants>TRACE;DEBUG</DefineConstants>
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <Optimize>false</Optimize>
+    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
+    <Optimize>true</Optimize>
     <FileAlignment>4096</FileAlignment>
     <DebugType>full</DebugType>
     <PlatformTarget>AnyCPU</PlatformTarget>
     <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
-    <LangVersion>default</LangVersion>
+    <LangVersion>6</LangVersion>
     <ErrorReport>prompt</ErrorReport>
     <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
-    <Prefer32Bit>true</Prefer32Bit>
+    <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|AnyCPU'">
-    <OutputPath>bin\Release\AnyCPU\</OutputPath>
+    <OutputPath>Build\Executables\AnyCPU\</OutputPath>
     <Optimize>true</Optimize>
     <FileAlignment>4096</FileAlignment>
     <PlatformTarget>AnyCPU</PlatformTarget>
@@ -155,21 +157,12 @@
     <AssemblyName>Yupi</AssemblyName>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="FirebirdSql.Data.FirebirdClient">
-      <HintPath>Building\Lib\Database\FirebirdSql.Data.FirebirdClient.dll</HintPath>
-    </Reference>
-    <Reference Include="Ingres.Stereo">
-      <HintPath>Building\Lib\Database\Ingres.Stereo.dll</HintPath>
-    </Reference>
     <Reference Include="Microsoft.CSharp" />
-    <Reference Include="MySql.Data">
-      <HintPath>Building\Lib\Database\MySql.Data.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Reference Include="Npgsql">
-      <HintPath>Building\Lib\Database\Npgsql.dll</HintPath>
+    <Reference Include="MySql.Data, Version=6.9.8.0, Culture=neutral, PublicKeyToken=c5687fc88969c44d, processorArchitecture=MSIL">
+      <HintPath>..\packages\MySql.Data.6.9.8\lib\net45\MySql.Data.dll</HintPath>
+      <Private>True</Private>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Data" />
@@ -180,19 +173,26 @@
     <Reference Include="System.Web" />
     <Reference Include="System.Web.Extensions" />
     <Reference Include="System.Xml" />
-    <Reference Include="System.Windows.Forms" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Core\Algorithms\Astar\PathNode.cs" />
     <Compile Include="Core\Algorithms\GameField\Algorithm\GametileUpdate.cs" />
     <Compile Include="Core\Algorithms\GameField\GameField.cs" />
     <Compile Include="Core\Algorithms\GameField\PointField.cs" />
     <Compile Include="Core\Algorithms\Astar\AStar.cs" />
-    <Compile Include="Core\Algorithms\Astar\AStarHeuristicType.cs" />
-    <Compile Include="Core\Algorithms\Astar\IIndexedObject.cs" />
-    <Compile Include="Core\Algorithms\Astar\IPathNode.cs" />
-    <Compile Include="Core\Algorithms\Astar\IWeightAddable.cs" />
+    <Compile Include="Core\Algorithms\Astar\Enums\AStarHeuristicType.cs" />
+    <Compile Include="Core\Algorithms\Astar\Interfaces\IIndexedObject.cs" />
+    <Compile Include="Core\Algorithms\Astar\Interfaces\IPathNode.cs" />
+    <Compile Include="Core\Algorithms\Astar\Interfaces\IWeightAddable.cs" />
     <Compile Include="Core\Algorithms\Astar\PriorityQueue.cs" />
-    <Compile Include="Coord.cs" />
+    <Compile Include="Data\Base\Adapters\Interfaces\IDatabaseClient.cs" />
+    <Compile Include="Data\Base\Adapters\Interfaces\IQueryAdapter.cs" />
+    <Compile Include="Data\Base\Adapters\NormalQueryAdapter.cs" />
+    <Compile Include="Game\Achievements\Composers\AchievementTalentComposer.cs" />
+    <Compile Include="Game\Groups\Composers\ForumRootMessageComposer.cs" />
+    <Compile Include="Game\Groups\Composers\ForumDataMessageComposer.cs" />
+    <Compile Include="Game\Groups\Structs\GroupForum.cs" />
+    <Compile Include="Game\Pathfinding\Vectors\Coord.cs" />
     <Compile Include="Core\Encryption\Crypto\KeyExchange\DiffieHellman.cs" />
     <Compile Include="Core\Encryption\Handler.cs" />
     <Compile Include="Core\Encryption\Hurlant\Crypto\Prng\ARC4.cs" />
@@ -200,35 +200,36 @@
     <Compile Include="Core\Encryption\Hurlant\Crypto\Rsa\Pkcs1PadType.cs" />
     <Compile Include="Core\Encryption\Hurlant\Crypto\Rsa\RsaKey.cs" />
     <Compile Include="Core\Encryption\PrimeCalculator.cs" />
-    <Compile Include="Core\Encryption\Properties\AssemblyInfo.cs" />
     <Compile Include="Core\Encryption\Utils\Converter.cs" />
     <Compile Include="Core\Encryption\Utils\Randomizer.cs" />
-    <Compile Include="Data\Base\Connections\ConnectionManager.cs" />
-    <Compile Include="Data\Base\Connections\DatabaseConnection.cs" />
-    <Compile Include="Data\Base\DatabaseManager.cs" />
-    <Compile Include="Data\Base\DatabaseServer.cs" />
+    <Compile Include="Data\Base\Managers\ConnectionManager.cs" />
+    <Compile Include="Data\Base\Clients\DatabaseClient.cs" />
+    <Compile Include="Data\Base\Managers\DatabaseManager.cs" />
+    <Compile Include="Data\Base\DatabaseServerDetails.cs" />
     <Compile Include="Data\Base\Exceptions\DatabaseException.cs" />
     <Compile Include="Data\Base\Exceptions\QueryException.cs" />
-    <Compile Include="Data\Base\Exceptions\TransactionException.cs" />
-    <Compile Include="Data\Base\MySqlClient.cs" />
-    <Compile Include="Data\Base\Sessions\Interfaces\IDatabaseClient.cs" />
-    <Compile Include="Data\Base\Sessions\Interfaces\IQueryAdapter.cs" />
-    <Compile Include="Data\Base\Sessions\Interfaces\IRegularQueryAdapter.cs" />
-    <Compile Include="Data\Base\Sessions\NormalQueryReactor.cs" />
-    <Compile Include="Data\Base\Sessions\QueryAdapter.cs" />
-    <Compile Include="Data\Base\Sessions\TransactionQueryReactor.cs" />
+    <Compile Include="Data\Base\Clients\MySqlClient.cs" />
     <Compile Include="Data\Collections\OnCycleDoneDelegate.cs" />
     <Compile Include="Data\Collections\QueuedDictionary.cs" />
+    <Compile Include="Game\Pets\Composers\PetCommandPanelComposer.cs" />
+    <Compile Include="Game\Pets\Composers\PetExperienceComposer.cs" />
+    <Compile Include="Game\Pets\Composers\PetInformationComposer.cs" />
+    <Compile Include="Game\Pets\Composers\RespectPetComposer.cs" />
+    <Compile Include="Game\Pets\Composers\RespectPetNotificationComposer.cs" />
+    <Compile Include="Game\Pets\Composers\SerializePetInventoryComposer.cs" />
+    <Compile Include="Game\Pets\PetTypeManager.cs" />
+    <Compile Include="Game\Pets\Structs\PetType.cs" />
     <Compile Include="Game\RoomBots\Interfaces\BotCommand.cs" />
     <Compile Include="Game\RoomBots\Interfaces\CatalogBot.cs" />
     <Compile Include="Game\RoomBots\Models\BaseBot.cs" />
-    <Compile Include="Core\Io\AbstractBar.cs" />
+    <Compile Include="Core\Io\Interfaces\AbstractBar.cs" />
     <Compile Include="Core\Io\AnimatedBar.cs" />
     <Compile Include="Core\Io\ConsoleFlashMode.cs" />
     <Compile Include="Core\Io\ConsoleOutputWriter.cs" />
     <Compile Include="Core\Io\LogMessage.cs" />
     <Compile Include="Core\Io\ServerUserChatTextHandler.cs" />
     <Compile Include="Core\Io\Writer.cs" />
+    <Compile Include="Game\Users\YoutubeVideo.cs" />
     <Compile Include="Net\Web\WebManager.cs" />
     <Compile Include="Data\FurnitureDataManager.cs" />
     <Compile Include="Data\Structs\FurnitureData.cs" />
@@ -381,7 +382,6 @@
     <Compile Include="Game\Commands\Controllers\RefreshItems.cs" />
     <Compile Include="Game\Commands\Controllers\RefreshNavigator.cs" />
     <Compile Include="Game\Commands\Controllers\RefreshPolls.cs" />
-    <Compile Include="Game\Commands\Controllers\RefreshQuests.cs" />
     <Compile Include="Game\Commands\Controllers\RefreshRanks.cs" />
     <Compile Include="Game\Commands\Controllers\RefreshSettings.cs" />
     <Compile Include="Game\Commands\Controllers\RefreshSongs.cs" />
@@ -409,11 +409,11 @@
     <Compile Include="Core\Security\CrossDomainSettings.cs" />
     <Compile Include="Game\Users\Figures\AvatarFigureParts.cs" />
     <Compile Include="Data\ServerCPULowPriorityWorker.cs" />
-    <Compile Include="Game\Browser\Interfaces\NavigatorHeader.cs" />
-    <Compile Include="Game\Browser\Interfaces\UserSearchLog.cs" />
-    <Compile Include="Game\Browser\Interfaces\PromoCategory.cs" />
+    <Compile Include="Game\Browser\Models\NavigatorHeader.cs" />
+    <Compile Include="Game\Browser\Models\UserSearchLog.cs" />
+    <Compile Include="Game\Browser\Models\PromoCategory.cs" />
     <Compile Include="Game\Browser\SearchResultList.cs" />
-    <Compile Include="Game\Pathfinding\ThreeDCoord.cs" />
+    <Compile Include="Game\Pathfinding\Vectors\ThreeDCoord.cs" />
     <Compile Include="Game\Pets\PetBreeding.cs" />
     <Compile Include="Game\Pets\Structs\PetCommand.cs" />
     <Compile Include="Game\Polls\Enums\PollAnswerType.cs" />
@@ -581,46 +581,37 @@
     <Compile Include="Game\Game.cs" />
     <Compile Include="Game\GameClients\Interfaces\GameClient.cs" />
     <Compile Include="Game\GameClients\GameClientManager.cs" />
-    <Compile Include="Game\Groups\Interfaces\GroupBackGroundColours.cs" />
-    <Compile Include="Game\Groups\Interfaces\GroupBaseColours.cs" />
-    <Compile Include="Game\Groups\Interfaces\GroupBases.cs" />
-    <Compile Include="Game\Groups\Interfaces\GroupForumPost.cs" />
+    <Compile Include="Game\Groups\Structs\GroupBackGroundColours.cs" />
+    <Compile Include="Game\Groups\Structs\GroupBaseColours.cs" />
+    <Compile Include="Game\Groups\Structs\GroupBases.cs" />
+    <Compile Include="Game\Groups\Structs\GroupForumPost.cs" />
     <Compile Include="Game\Groups\GroupManager.cs" />
-    <Compile Include="Game\Groups\Interfaces\GroupSymbolColours.cs" />
-    <Compile Include="Game\Groups\Interfaces\GroupSymbols.cs" />
-    <Compile Include="Game\Groups\Interfaces\GroupMember.cs" />
-    <Compile Include="Game\Groups\Interfaces\Guild.cs" />
-    <Compile Include="Game\Browser\Interfaces\PublicCategory.cs" />
+    <Compile Include="Game\Groups\Structs\GroupSymbolColours.cs" />
+    <Compile Include="Game\Groups\Structs\GroupSymbols.cs" />
+    <Compile Include="Game\Groups\Structs\GroupMember.cs" />
+    <Compile Include="Game\Groups\Structs\Group.cs" />
+    <Compile Include="Game\Browser\Models\PublicCategory.cs" />
     <Compile Include="Game\Browser\HotelLandingManager.cs" />
     <Compile Include="Game\Browser\HotelBrowserManager.cs" />
     <Compile Include="Game\Browser\Enums\PublicImageType.cs" />
-    <Compile Include="Game\Browser\Interfaces\PublicItem.cs" />
+    <Compile Include="Game\Browser\Models\PublicItem.cs" />
     <Compile Include="Game\Browser\Enums\PublicItemType.cs" />
-    <Compile Include="Game\Browser\HotelLandingPromos.cs" />
+    <Compile Include="Game\Browser\Models\HotelLandingPromos.cs" />
     <Compile Include="Game\Pathfinding\MinHeap.cs" />
     <Compile Include="Game\Pathfinding\PathFinder.cs" />
     <Compile Include="Game\Pathfinding\PathFinderNode.cs" />
     <Compile Include="Game\Pathfinding\Rotation.cs" />
-    <Compile Include="Game\Pathfinding\Vector2D.cs" />
+    <Compile Include="Game\Pathfinding\Vectors\Vector2D.cs" />
     <Compile Include="Game\Pets\Enums\DatabaseUpdateState.cs" />
     <Compile Include="Game\Pets\MoplaBreed.cs" />
     <Compile Include="Game\Pets\Enums\MoplaState.cs" />
     <Compile Include="Game\Pets\Pet.cs" />
     <Compile Include="Game\Pets\PetCommandHandler.cs" />
     <Compile Include="Game\Pets\PetLocale.cs" />
-    <Compile Include="Game\Pets\PetRace.cs" />
+    <Compile Include="Game\Pets\Structs\PetRace.cs" />
     <Compile Include="Game\Polls\Poll.cs" />
     <Compile Include="Game\Polls\PollManager.cs" />
     <Compile Include="Game\Polls\PollQuestion.cs" />
-    <Compile Include="Game\Quests\Composers\QuestAbortedComposer.cs" />
-    <Compile Include="Game\Quests\Composers\QuestCompletedComposer.cs" />
-    <Compile Include="Game\Quests\Composers\QuestListComposer.cs" />
-    <Compile Include="Game\Quests\Composers\QuestRewardType.cs" />
-    <Compile Include="Game\Quests\Composers\QuestStartedComposer.cs" />
-    <Compile Include="Game\Quests\Quest.cs" />
-    <Compile Include="Game\Quests\QuestManager.cs" />
-    <Compile Include="Game\Quests\QuestType.cs" />
-    <Compile Include="Game\Quests\QuestTypeUtillity.cs" />
     <Compile Include="Game\Users\Fuses\RoleManager.cs" />
     <Compile Include="Game\RoomBots\Enumerators\AIType.cs" />
     <Compile Include="Game\RoomBots\Interfaces\BotAi.cs" />
@@ -675,11 +666,10 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Properties\Settings.cs" />
     <Compile Include="Messages\Parsers\IDataParser.cs" />
-    <Compile Include="Data\Structs\PluginData.cs" />
+    <Compile Include="Data\Interfaces\PluginData.cs" />
     <Compile Include="Core\Util\Enumerators\TextEndingTypes.cs" />
     <Compile Include="Data\ServerMemoryContainer.cs" />
     <Compile Include="Core\Util\Coordinates\CoordinatesFormatter.cs" />
-    <Compile Include="Data\Base\Queries\ChunkQuery.cs" />
     <Compile Include="Core\Util\Math\RandomNumberGenerator.cs" />
   </ItemGroup>
   <ItemGroup>
@@ -703,6 +693,7 @@
     <None Include="app.config">
       <SubType>Designer</SubType>
     </None>
+    <None Include="packages.config" />
     <None Include="Properties\app.config" />
     <None Include="Properties\app.manifest" />
   </ItemGroup>

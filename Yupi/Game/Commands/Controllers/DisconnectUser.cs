@@ -21,7 +21,7 @@ namespace Yupi.Game.Commands.Controllers
 
         public override bool Execute(GameClient session, string[] pms)
         {
-            var user = Yupi.GetGame().GetClientManager().GetClientByUserName(pms[0]);
+            GameClient user = Yupi.GetGame().GetClientManager().GetClientByUserName(pms[0]);
             if (user == null || user.GetHabbo() == null)
             {
                 session.SendWhisper(Yupi.GetLanguage().GetVar("user_not_found"));
@@ -38,7 +38,7 @@ namespace Yupi.Game.Commands.Controllers
                 Yupi.GetGame()
                     .GetModerationTool()
                     .LogStaffEntry(session.GetHabbo().UserName, user.GetHabbo().UserName, "dc",
-                        string.Format("Disconnect User[{0}]", pms[1]));
+                        $"Disconnect User[{pms[1]}]");
             }
             catch
             {

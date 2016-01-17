@@ -1,11 +1,36 @@
+/**
+     Because i love chocolat...                                      
+                                    88 88  
+                                    "" 88  
+                                       88  
+8b       d8 88       88 8b,dPPYba,  88 88  
+`8b     d8' 88       88 88P'    "8a 88 88  
+ `8b   d8'  88       88 88       d8 88 ""  
+  `8b,d8'   "8a,   ,a88 88b,   ,a8" 88 aa  
+    Y88'     `"YbbdP'Y8 88`YbbdP"'  88 88  
+    d8'                 88                 
+   d8'                  88     
+   
+   Private Habbo Hotel Emulating System
+   @author Claudio A. Santoro W.
+   @author Kessiler R.
+   @version dev-beta
+   @license MIT
+   @copyright Sulake Corporation Oy
+   @observation All Rights of Habbo, Habbo Hotel, and all Habbo contents and it's names, is copyright from Sulake
+   Corporation Oy. Yupi! has nothing linked with Sulake. 
+   This Emulator is Only for DEVELOPMENT uses. If you're selling this you're violating Sulakes Copyright.
+*/
+
 using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Data;
 using System.Linq;
 using System.Text;
+using Yupi.Data.Base.Adapters.Interfaces;
 using Yupi.Game.GameClients.Interfaces;
-using Yupi.Game.Groups.Interfaces;
+using Yupi.Game.Groups.Structs;
 using Yupi.Game.Rooms;
 using Yupi.Game.Users;
 using Yupi.Messages;
@@ -62,11 +87,11 @@ namespace Yupi.Game.Groups
 
             ClearInfo();
 
-            using (var queryReactor = Yupi.GetDatabaseManager().GetQueryReactor())
+            using (IQueryAdapter commitableQueryReactor = Yupi.GetDatabaseManager().GetQueryReactor())
             {
-                queryReactor.SetQuery("SELECT * FROM groups_badges_parts ORDER BY id");
+                commitableQueryReactor.SetQuery("SELECT * FROM groups_badges_parts ORDER BY id");
 
-                var table = queryReactor.GetTable();
+                DataTable table = commitableQueryReactor.GetTable();
 
                 if (table == null)
                     return;
@@ -76,19 +101,23 @@ namespace Yupi.Game.Groups
                     switch (row["type"].ToString().ToLower())
                     {
                         case "base":
-                            Bases.Add(new GroupBases(int.Parse(row["id"].ToString()), row["code"].ToString(), row["code2"].ToString()));
+                            Bases.Add(new GroupBases(int.Parse(row["id"].ToString()), row["code"].ToString(),
+                                row["second_code"].ToString()));
                             break;
                         case "symbol":
-                            Symbols.Add(new GroupSymbols(int.Parse(row["id"].ToString()), row["code"].ToString(), row["code2"].ToString()));
+                            Symbols.Add(new GroupSymbols(int.Parse(row["id"].ToString()), row["code"].ToString(),
+                                row["second_code"].ToString()));
                             break;
                         case "base_color":
                             BaseColours.Add(new GroupBaseColours(int.Parse(row["id"].ToString()), row["code"].ToString()));
                             break;
                         case "symbol_color":
-                            SymbolColours.Add(int.Parse(row["id"].ToString()), new GroupSymbolColours(int.Parse(row["id"].ToString()), row["code"].ToString()));
+                            SymbolColours.Add(int.Parse(row["id"].ToString()),
+                                new GroupSymbolColours(int.Parse(row["id"].ToString()), row["code"].ToString()));
                             break;
                         case "other_color":
-                            BackGroundColours.Add(int.Parse(row["id"].ToString()), new GroupBackGroundColours(int.Parse(row["id"].ToString()), row["code"].ToString()));
+                            BackGroundColours.Add(int.Parse(row["id"].ToString()),
+                                new GroupBackGroundColours(int.Parse(row["id"].ToString()), row["code"].ToString()));
                             break;
                     }
                 }
@@ -118,32 +147,37 @@ namespace Yupi.Game.Groups
         /// <param name="colour1">The colour1.</param>
         /// <param name="colour2">The colour2.</param>
         /// <param name="group">The theGroup.</param>
-        internal void CreateGroup(string name, string desc, uint roomId, string badge, GameClient session, int colour1, int colour2, out Guild group)
+        internal void CreateGroup(string name, string desc, uint roomId, string badge, GameClient session, int colour1,
+            int colour2, out Group group)
         {
             Habbo user = session.GetHabbo();
             Dictionary<uint, GroupMember> emptyDictionary = new Dictionary<uint, GroupMember>();
 
-            using (var queryReactor = Yupi.GetDatabaseManager().GetQueryReactor())
+            using (IQueryAdapter commitableQueryReactor = Yupi.GetDatabaseManager().GetQueryReactor())
             {
-                queryReactor.SetQuery($"INSERT INTO groups_data (`name`, `desc`,`badge`,`owner_id`,`created`,`room_id`,`colour1`,`colour2`) VALUES(@name,@desc,@badge,'{session.GetHabbo().Id}',UNIX_TIMESTAMP(),'{roomId}','{colour1}','{colour2}')");
-                queryReactor.AddParameter("name", name);
-                queryReactor.AddParameter("desc", desc);
-                queryReactor.AddParameter("badge", badge);
+                commitableQueryReactor.SetQuery(
+                    $"INSERT INTO groups_data (group_name, group_description, group_badge, owner_id, created, room_id, colour1, colour2) VALUES(@name,@desc,@badge,'{session.GetHabbo().Id}',UNIX_TIMESTAMP(),'{roomId}','{colour1}','{colour2}')");
+                commitableQueryReactor.AddParameter("name", name);
+                commitableQueryReactor.AddParameter("desc", desc);
+                commitableQueryReactor.AddParameter("badge", badge);
 
-                int id = (int)queryReactor.InsertQuery();
+                uint id = (uint) commitableQueryReactor.InsertQuery();
 
-                queryReactor.RunFastQuery($"UPDATE rooms_data SET group_id='{id}' WHERE id='{roomId}' LIMIT 1");
+                commitableQueryReactor.RunFastQuery($"UPDATE rooms_data SET group_id='{id}' WHERE id='{roomId}' LIMIT 1");
 
                 GroupMember memberGroup = new GroupMember(user.Id, user.UserName, user.Look, id, 2, Yupi.GetUnixTimeStamp());
-                Dictionary<uint, GroupMember> dictionary = new Dictionary<uint, GroupMember> {{ session.GetHabbo().Id, memberGroup }};
+                Dictionary<uint, GroupMember> dictionary = new Dictionary<uint, GroupMember> {{session.GetHabbo().Id, memberGroup}};
 
-                group = new Guild(id, name, desc, roomId, badge, Yupi.GetUnixTimeStamp(), user.Id, colour1, colour2, dictionary, emptyDictionary, emptyDictionary, 0, 1, false, name, desc, 0, 0.0, 0, string.Empty, 0, 0, 1, 1, 2);
+                group = new Group(id, name, desc, roomId, badge, Yupi.GetUnixTimeStamp(), user.Id, colour1, colour2,
+                    dictionary, emptyDictionary, emptyDictionary, 0, 1,
+                    new GroupForum(0, string.Empty, string.Empty, 0, 0, 0, string.Empty, 0, 0, 1, 1, 2));
 
                 Groups.Add(id, group);
 
-                queryReactor.RunFastQuery($"INSERT INTO groups_members (group_id, user_id, rank, date_join) VALUES ('{id}','{session.GetHabbo().Id}','2','{Yupi.GetUnixTimeStamp()}')");
+                commitableQueryReactor.RunFastQuery(
+                    $"INSERT INTO groups_members (group_id, user_id, rank, date_join) VALUES ('{id}','{session.GetHabbo().Id}','2','{Yupi.GetUnixTimeStamp()}')");
 
-                var room = Yupi.GetGame().GetRoomManager().GetRoom(roomId);
+                Room room = Yupi.GetGame().GetRoomManager().GetRoom(roomId);
 
                 if (room != null)
                 {
@@ -154,8 +188,9 @@ namespace Yupi.Game.Groups
                 user.UserGroups.Add(memberGroup);
                 group.Admins.Add(user.Id, memberGroup);
 
-                queryReactor.RunFastQuery($"UPDATE users_stats SET favourite_group='{id}' WHERE id='{user.Id}' LIMIT 1");
-                queryReactor.RunFastQuery($"DELETE FROM rooms_rights WHERE room_id='{roomId}'");
+                commitableQueryReactor.RunFastQuery(
+                    $"UPDATE users_stats SET favourite_group='{id}' WHERE id='{user.Id}' LIMIT 1");
+                commitableQueryReactor.RunFastQuery($"DELETE FROM rooms_rights WHERE room_id='{roomId}'");
             }
         }
 
@@ -164,45 +199,66 @@ namespace Yupi.Game.Groups
         /// </summary>
         /// <param name="groupId">The theGroup identifier.</param>
         /// <returns>Guild.</returns>
-        internal Guild GetGroup(int groupId)
+        internal Group GetGroup(uint groupId)
         {
             if (Groups == null)
                 return null;
 
             if (Groups.Contains(groupId))
-                return (Guild)Groups[groupId];
+                return (Group) Groups[groupId];
 
-            var members = new Dictionary<uint, GroupMember>();
-            var admins = new Dictionary<uint, GroupMember>();
-            var requests = new Dictionary<uint, GroupMember>();
+            Dictionary<uint, GroupMember> members = new Dictionary<uint, GroupMember>();
+            Dictionary<uint, GroupMember> admins = new Dictionary<uint, GroupMember>();
+            Dictionary<uint, GroupMember> requests = new Dictionary<uint, GroupMember>();
 
-            using (var queryReactor = Yupi.GetDatabaseManager().GetQueryReactor())
+            using (IQueryAdapter commitableQueryReactor = Yupi.GetDatabaseManager().GetQueryReactor())
             {
-                queryReactor.SetQuery($"SELECT * FROM groups_data WHERE id='{groupId}' LIMIT 1");
+                commitableQueryReactor.SetQuery($"SELECT * FROM groups_data WHERE id ='{groupId}' LIMIT 1");
 
-                var row = queryReactor.GetRow();
+                DataRow row = commitableQueryReactor.GetRow();
 
                 if (row == null)
                     return null;
 
-                queryReactor.SetQuery("SELECT g.user_id, u.username, u.look, g.rank, g.date_join FROM groups_members g " + $"INNER JOIN users u ON (g.user_id = u.id) WHERE g.group_id='{groupId}'");
+                commitableQueryReactor.SetQuery($"SELECT * FROM groups_forums_data WHERE group_id='{groupId}' LIMIT 1");
 
-                var groupMembersTable = queryReactor.GetTable();
+                DataRow row2 = commitableQueryReactor.GetRow();
 
-                queryReactor.SetQuery("SELECT g.user_id, u.username, u.look FROM groups_requests g " + $"INNER JOIN users u ON (g.user_id = u.id) WHERE group_id='{groupId}'");
+                GroupForum groupForum;
 
-                var groupRequestsTable = queryReactor.GetTable();
+                if (row2 == null)
+                    groupForum = new GroupForum(0, string.Empty, string.Empty, 0, 0, 0, string.Empty, 0, 0, 1, 1, 2);
+                else
+                    groupForum = new GroupForum((uint) row2["id"], row2["forum_name"].ToString(),
+                        row2["forum_description"].ToString(),
+                        (uint) row2["forum_messages_count"], double.Parse(row2["forum_score"].ToString()),
+                        (uint) row2["forum_lastposter_id"], row2["forum_lastposter_name"].ToString(),
+                        (uint) row2["forum_lastposter_timestamp"],
+                        (uint) row2["who_can_read"], (uint) row2["who_can_post"], (uint) row2["who_can_thread"],
+                        (uint) row2["who_can_mod"]);
+
+
+                commitableQueryReactor.SetQuery(
+                    "SELECT g.user_id, u.username, u.look, g.rank, g.date_join FROM groups_members g " +
+                    $"INNER JOIN users u ON (g.user_id = u.id) WHERE g.group_id='{groupId}'");
+
+                DataTable groupMembersTable = commitableQueryReactor.GetTable();
+
+                commitableQueryReactor.SetQuery("SELECT g.user_id, u.username, u.look FROM groups_requests g " +
+                                                $"INNER JOIN users u ON (g.user_id = u.id) WHERE group_id='{groupId}'");
+
+                DataTable groupRequestsTable = commitableQueryReactor.GetTable();
 
                 uint userId;
 
                 foreach (DataRow dataRow in groupMembersTable.Rows)
                 {
-                    userId = (uint)dataRow["user_id"];
+                    userId = (uint) dataRow["user_id"];
 
-                    var rank = int.Parse(dataRow["rank"].ToString());
+                    int rank = int.Parse(dataRow["rank"].ToString());
 
-                    var membGroup = new GroupMember(userId, dataRow["username"].ToString(), dataRow["look"].ToString(),
-                        groupId, rank, (int)dataRow["date_join"]);
+                    GroupMember membGroup = new GroupMember(userId, dataRow["username"].ToString(), dataRow["look"].ToString(),
+                        groupId, rank, (int) dataRow["date_join"]);
 
                     members.Add(userId, membGroup);
 
@@ -212,26 +268,22 @@ namespace Yupi.Game.Groups
 
                 foreach (DataRow dataRow in groupRequestsTable.Rows)
                 {
-                    userId = (uint)dataRow["user_id"];
+                    userId = (uint) dataRow["user_id"];
 
-                    var membGroup = new GroupMember(userId, dataRow["username"].ToString(), dataRow["look"].ToString(),
+                    GroupMember membGroup = new GroupMember(userId, dataRow["username"].ToString(), dataRow["look"].ToString(),
                         groupId, 0, Yupi.GetUnixTimeStamp());
 
                     if (!requests.ContainsKey(userId))
                         requests.Add(userId, membGroup);
                 }
 
-                var group = new Guild((int) row[0], row[1].ToString(), row[2].ToString(), (uint)row[6],
-                    row[3].ToString(), (int)row[5], (uint)row[4], (int)row[8], (int)row[9], members, requests,
-                    admins, Convert.ToUInt16(row[7]), Convert.ToUInt16(row[10]), row["has_forum"].ToString() == "1",
-                    row["forum_name"].ToString(), row["forum_description"].ToString(),
-                    uint.Parse(row["forum_messages_count"].ToString()), double.Parse(row["forum_score"].ToString()),
-                    uint.Parse(row["forum_lastposter_id"].ToString()), row["forum_lastposter_name"].ToString(),
-                    int.Parse(row["forum_lastposter_timestamp"].ToString()),
-                    (int)row["who_can_read"], (int)row["who_can_post"], (int)row["who_can_thread"],
-                    (int)row["who_can_mod"]);
+                Group group = new Group((uint) row["id"], row["group_name"].ToString(),
+                    row["group_description"].ToString(), (uint) row["room_id"],
+                    row["group_badge"].ToString(), (int) row["created"], (uint) row["owner_id"], (int) row["colour1"],
+                    (int) row["colour2"], members, requests,
+                    admins, Convert.ToUInt16(row["state"]), Convert.ToUInt16(row["admindeco"]), groupForum);
 
-                Groups.Add((uint)row[0], group);
+                Groups.Add((uint) row["id"], group);
 
                 return group;
             }
@@ -244,17 +296,18 @@ namespace Yupi.Game.Groups
         /// <returns>HashSet&lt;GroupUser&gt;.</returns>
         internal HashSet<GroupMember> GetUserGroups(uint userId)
         {
-            var list = new HashSet<GroupMember>();
+            HashSet<GroupMember> list = new HashSet<GroupMember>();
 
-            using (var queryReactor = Yupi.GetDatabaseManager().GetQueryReactor())
+            using (IQueryAdapter commitableQueryReactor = Yupi.GetDatabaseManager().GetQueryReactor())
             {
-                queryReactor.SetQuery($"SELECT u.username, u.look, g.group_id, g.rank, g.date_join FROM groups_members g INNER JOIN users u ON (g.user_id = u.id) WHERE g.user_id={userId}");
+                commitableQueryReactor.SetQuery(
+                    $"SELECT u.username, u.look, g.group_id, g.rank, g.date_join FROM groups_members g INNER JOIN users u ON (g.user_id = u.id) WHERE g.user_id={userId}");
 
-                var table = queryReactor.GetTable();
+                DataTable table = commitableQueryReactor.GetTable();
 
                 foreach (DataRow dataRow in table.Rows)
                     list.Add(new GroupMember(userId, dataRow["username"].ToString(), dataRow["look"].ToString(),
-                        (int)dataRow["group_id"], Convert.ToInt16(dataRow["rank"]), (int)dataRow["date_join"]));
+                        (uint) dataRow["group_id"], Convert.ToInt16(dataRow["rank"]), (int) dataRow["date_join"]));
             }
 
             return list;
@@ -279,7 +332,8 @@ namespace Yupi.Game.Groups
         /// <param name="searchVal">The search value.</param>
         /// <param name="page">The page.</param>
         /// <returns>ServerMessage.</returns>
-        internal ServerMessage SerializeGroupMembers(ServerMessage response, Guild theGroup, uint reqType, GameClient session, string searchVal = "", int page = 0)
+        internal ServerMessage SerializeGroupMembers(ServerMessage response, Group theGroup, uint reqType,
+            GameClient session, string searchVal = "", int page = 0)
         {
             if (theGroup == null || session == null)
                 return null;
@@ -287,12 +341,12 @@ namespace Yupi.Game.Groups
             if (page < 1)
                 page = 0;
 
-            response.AppendInteger((uint) theGroup.Id);
+            response.AppendInteger(theGroup.Id);
             response.AppendString(theGroup.Name);
             response.AppendInteger(theGroup.RoomId);
             response.AppendString(theGroup.Badge);
 
-            var list = Split(GetGroupUsersByString(theGroup, searchVal, reqType));
+            List<List<GroupMember>> list = Split(GetGroupUsersByString(theGroup, searchVal, reqType));
 
             if (reqType == 0)
             {
@@ -302,11 +356,11 @@ namespace Yupi.Game.Groups
                 {
                     response.AppendInteger(list[page].Count);
 
-                    using (var enumerator = list[page].GetEnumerator())
+                    using (List<GroupMember>.Enumerator enumerator = list[page].GetEnumerator())
                     {
                         while (enumerator.MoveNext())
                         {
-                            var current = enumerator.Current;
+                            GroupMember current = enumerator.Current;
 
                             AddGroupMemberIntoResponse(response, current);
                         }
@@ -319,17 +373,17 @@ namespace Yupi.Game.Groups
             {
                 response.AppendInteger(theGroup.Admins.Count);
 
-                var paging = (page <= list.Count) ? list[page] : null;
+                List<GroupMember> paging = page <= list.Count ? list[page] : null;
 
                 if ((theGroup.Admins.Count > 0) && (list.Count > 0) && paging != null)
                 {
                     response.AppendInteger(list[page].Count);
 
-                    using (var enumerator = list[page].GetEnumerator())
+                    using (List<GroupMember>.Enumerator enumerator = list[page].GetEnumerator())
                     {
                         while (enumerator.MoveNext())
                         {
-                            var current = enumerator.Current;
+                            GroupMember current = enumerator.Current;
 
                             AddGroupMemberIntoResponse(response, current);
                         }
@@ -346,11 +400,11 @@ namespace Yupi.Game.Groups
                 {
                     response.AppendInteger(list[page].Count);
 
-                    using (var enumerator = list[page].GetEnumerator())
+                    using (List<GroupMember>.Enumerator enumerator = list[page].GetEnumerator())
                     {
                         while (enumerator.MoveNext())
                         {
-                            var current = enumerator.Current;
+                            GroupMember current = enumerator.Current;
 
                             response.AppendInteger(3);
 
@@ -385,20 +439,20 @@ namespace Yupi.Game.Groups
         /// <param name="searchVal">The search value.</param>
         /// <param name="req">The req.</param>
         /// <returns>List&lt;GroupUser&gt;.</returns>
-        internal List<GroupMember> GetGroupUsersByString(Guild theGroup, string searchVal, uint req)
+        internal List<GroupMember> GetGroupUsersByString(Group theGroup, string searchVal, uint req)
         {
-            var list = new List<GroupMember>();
+            List<GroupMember> list = new List<GroupMember>();
 
             switch (req)
             {
                 case 0:
-                    using (var enumerator = theGroup.Members.Values.GetEnumerator())
+                    using (Dictionary<uint, GroupMember>.ValueCollection.Enumerator enumerator = theGroup.Members.Values.GetEnumerator())
                         while (enumerator.MoveNext())
                             list.Add(enumerator.Current);
                     break;
 
                 case 1:
-                    using (var enumerator2 = theGroup.Admins.Values.GetEnumerator())
+                    using (Dictionary<uint, GroupMember>.ValueCollection.Enumerator enumerator2 = theGroup.Admins.Values.GetEnumerator())
                         while (enumerator2.MoveNext())
                             list.Add(enumerator2.Current);
                     break;
@@ -420,7 +474,12 @@ namespace Yupi.Game.Groups
         /// <param name="theGroup">The theGroup.</param>
         /// <param name="searchVal">The search value.</param>
         /// <returns>List&lt;System.UInt32&gt;.</returns>
-        internal List<GroupMember> GetGroupRequestsByString(Guild theGroup, string searchVal) => string.IsNullOrWhiteSpace(searchVal) ? theGroup.Requests.Values.ToList() : theGroup.Requests.Values.Where(request => request.Name.ToLower().Contains(searchVal.ToLower())).ToList();
+        internal List<GroupMember> GetGroupRequestsByString(Group theGroup, string searchVal)
+            =>
+                string.IsNullOrWhiteSpace(searchVal)
+                    ? theGroup.Requests.Values.ToList()
+                    : theGroup.Requests.Values.Where(request => request.Name.ToLower().Contains(searchVal.ToLower()))
+                        .ToList();
 
         /// <summary>
         ///     Serializes the theGroup information.
@@ -429,13 +488,13 @@ namespace Yupi.Game.Groups
         /// <param name="response">The response.</param>
         /// <param name="session">The session.</param>
         /// <param name="newWindow">if set to <c>true</c> [new window].</param>
-        internal void SerializeGroupInfo(Guild group, ServerMessage response, GameClient session, bool newWindow = false)
+        internal void SerializeGroupInfo(Group group, ServerMessage response, GameClient session, bool newWindow = false)
         {
             if (group == null || session == null)
                 return;
 
-            var dateTime = new DateTime(1970, 1, 1, 0, 0, 0, 0);
-            var dateTime2 = dateTime.AddSeconds(group.CreateTime);
+            DateTime dateTime = new DateTime(1970, 1, 1, 0, 0, 0, 0);
+            DateTime dateTime2 = dateTime.AddSeconds(group.CreateTime);
 
             response.Init(LibraryParser.OutgoingRequest("GroupDataMessageComposer"));
 
@@ -446,18 +505,26 @@ namespace Yupi.Game.Groups
             response.AppendString(group.Description);
             response.AppendString(group.Badge);
             response.AppendInteger(group.RoomId);
-            response.AppendString((Yupi.GetGame().GetRoomManager().GenerateRoomData(group.RoomId) == null) ? "No room found.." : Yupi.GetGame().GetRoomManager().GenerateRoomData(@group.RoomId).Name);
-            response.AppendInteger((group.CreatorId == session.GetHabbo().Id) ? 3 : (group.Requests.ContainsKey(session.GetHabbo().Id) ? 2 : (group.Members.ContainsKey(session.GetHabbo().Id) ? 1 : 0)));
+            response.AppendString(Yupi.GetGame().GetRoomManager().GenerateRoomData(@group.RoomId) == null
+                ? "No room found.."
+                : Yupi.GetGame().GetRoomManager().GenerateRoomData(@group.RoomId).Name);
+            response.AppendInteger(@group.CreatorId == session.GetHabbo().Id
+                ? 3
+                : (group.Requests.ContainsKey(session.GetHabbo().Id)
+                    ? 2
+                    : (group.Members.ContainsKey(session.GetHabbo().Id) ? 1 : 0)));
             response.AppendInteger(group.Members.Count);
             response.AppendBool(session.GetHabbo().FavouriteGroup == group.Id);
             response.AppendString($"{dateTime2.Day.ToString("00")}-{dateTime2.Month.ToString("00")}-{dateTime2.Year}");
             response.AppendBool(group.CreatorId == session.GetHabbo().Id);
             response.AppendBool(group.Admins.ContainsKey(session.GetHabbo().Id));
-            response.AppendString((Yupi.GetHabboById(group.CreatorId) == null) ? string.Empty : Yupi.GetHabboById(group.CreatorId).UserName);
+            response.AppendString(Yupi.GetHabboById(@group.CreatorId) == null
+                ? string.Empty
+                : Yupi.GetHabboById(group.CreatorId).UserName);
             response.AppendBool(newWindow);
             response.AppendBool(group.AdminOnlyDeco == 0u);
             response.AppendInteger(group.Requests.Count);
-            response.AppendBool(group.HasForum);
+            response.AppendBool(group.Forum.Id != 0);
             session.SendMessage(response);
         }
 
@@ -469,13 +536,14 @@ namespace Yupi.Game.Groups
         /// <param name="session">The session.</param>
         /// <param name="room">The room.</param>
         /// <param name="newWindow">if set to <c>true</c> [new window].</param>
-        internal void SerializeGroupInfo(Guild group, ServerMessage response, GameClient session, Room room, bool newWindow = false)
+        internal void SerializeGroupInfo(Group group, ServerMessage response, GameClient session, Room room,
+            bool newWindow = false)
         {
             if (room == null || group == null)
                 return;
 
-            var dateTime = new DateTime(1970, 1, 1, 0, 0, 0, 0);
-            var dateTime2 = dateTime.AddSeconds(group.CreateTime);
+            DateTime dateTime = new DateTime(1970, 1, 1, 0, 0, 0, 0);
+            DateTime dateTime2 = dateTime.AddSeconds(group.CreateTime);
 
             response.Init(LibraryParser.OutgoingRequest("GroupDataMessageComposer"));
 
@@ -486,18 +554,26 @@ namespace Yupi.Game.Groups
             response.AppendString(group.Description);
             response.AppendString(group.Badge);
             response.AppendInteger(group.RoomId);
-            response.AppendString((Yupi.GetGame().GetRoomManager().GenerateRoomData(group.RoomId) == null) ? "No room found.." : Yupi.GetGame().GetRoomManager().GenerateRoomData(group.RoomId).Name);
-            response.AppendInteger((group.CreatorId == session.GetHabbo().Id) ? 3 : (group.Requests.ContainsKey(session.GetHabbo().Id) ? 2 : (group.Members.ContainsKey(session.GetHabbo().Id) ? 1 : 0)));
+            response.AppendString(Yupi.GetGame().GetRoomManager().GenerateRoomData(@group.RoomId) == null
+                ? "No room found.."
+                : Yupi.GetGame().GetRoomManager().GenerateRoomData(group.RoomId).Name);
+            response.AppendInteger(@group.CreatorId == session.GetHabbo().Id
+                ? 3
+                : (group.Requests.ContainsKey(session.GetHabbo().Id)
+                    ? 2
+                    : (group.Members.ContainsKey(session.GetHabbo().Id) ? 1 : 0)));
             response.AppendInteger(group.Members.Count);
             response.AppendBool(session.GetHabbo().FavouriteGroup == group.Id);
             response.AppendString($"{dateTime2.Day.ToString("00")}-{dateTime2.Month.ToString("00")}-{dateTime2.Year}");
             response.AppendBool(group.CreatorId == session.GetHabbo().Id);
             response.AppendBool(group.Admins.ContainsKey(session.GetHabbo().Id));
-            response.AppendString((Yupi.GetHabboById(group.CreatorId) == null) ? string.Empty : Yupi.GetHabboById(group.CreatorId).UserName);
+            response.AppendString(Yupi.GetHabboById(@group.CreatorId) == null
+                ? string.Empty
+                : Yupi.GetHabboById(group.CreatorId).UserName);
             response.AppendBool(newWindow);
             response.AppendBool(group.AdminOnlyDeco == 0u);
             response.AppendInteger(group.Requests.Count);
-            response.AppendBool(group.HasForum);
+            response.AppendBool(group.Forum.Id != 0);
             room.SendMessage(response);
         }
 
@@ -510,9 +586,9 @@ namespace Yupi.Game.Groups
         /// <returns>System.String.</returns>
         internal string GenerateGuildImage(int guildBase, int guildBaseColor, List<int> states)
         {
-            var image = new StringBuilder($"b{guildBase:00}{guildBaseColor:00}");
+            StringBuilder image = new StringBuilder($"b{guildBase:00}{guildBaseColor:00}");
 
-            for (var i = 0; i < 3 * 4; i += 3)
+            for (int i = 0; i < 3*4; i += 3)
                 image.Append(i >= states.Count ? "s" : $"s{states[i]:00}{states[i + 1]:00}{states[i + 2]}");
 
             return image.ToString();
@@ -529,16 +605,16 @@ namespace Yupi.Game.Groups
             if (colour1)
             {
                 if (SymbolColours.Contains(index))
-                    return ((GroupSymbolColours)SymbolColours[index]).Colour;
+                    return ((GroupSymbolColours) SymbolColours[index]).Colour;
 
                 if (BackGroundColours.Contains(index))
-                    return ((GroupBackGroundColours)BackGroundColours[index]).Colour;
+                    return ((GroupBackGroundColours) BackGroundColours[index]).Colour;
 
                 return "4f8a00";
             }
 
             if (BackGroundColours.Contains(index))
-                return ((GroupBackGroundColours)BackGroundColours[index]).Colour;
+                return ((GroupBackGroundColours) BackGroundColours[index]).Colour;
 
             return "4f8a00";
         }
@@ -549,14 +625,16 @@ namespace Yupi.Game.Groups
         /// <param name="id">The identifier.</param>
         internal void DeleteGroup(uint id)
         {
-            using (var queryReactor = Yupi.GetDatabaseManager().GetQueryReactor())
+            using (IQueryAdapter commitableQueryReactor = Yupi.GetDatabaseManager().GetQueryReactor())
             {
-                queryReactor.SetQuery(string.Format("DELETE FROM groups_members WHERE group_id = {0};" +
-                                                    "DELETE FROM groups_requests WHERE group_id = {0};" +
-                                                    "DELETE FROM groups_data WHERE id = {0};" +
-                                                    "UPDATE rooms_data SET group_id = 0 WHERE group_id = {0};", id)
-                                                    );
-                queryReactor.RunQuery();
+                commitableQueryReactor.SetQuery(string.Format("DELETE FROM groups_members WHERE group_id = {0};" +
+                                                              "DELETE FROM groups_requests WHERE group_id = {0};" +
+                                                              "DELETE FROM groups_forums_data WHERE group_id = {0}; " +
+                                                              "DELETE FROM groups_data WHERE id = {0};" +
+                                                              "UPDATE rooms_data SET group_id = 0 WHERE group_id = {0};",
+                    id)
+                    );
+                commitableQueryReactor.RunQuery();
 
                 Groups.Remove(id);
             }
@@ -569,10 +647,10 @@ namespace Yupi.Game.Groups
         /// <returns>System.Int32.</returns>
         internal int GetMessageCountForThread(uint id)
         {
-            using (var queryReactor = Yupi.GetDatabaseManager().GetQueryReactor())
+            using (IQueryAdapter commitableQueryReactor = Yupi.GetDatabaseManager().GetQueryReactor())
             {
-                queryReactor.SetQuery($"SELECT COUNT(*) FROM groups_forums_posts WHERE parent_id='{id}'");
-                return int.Parse(queryReactor.GetString());
+                commitableQueryReactor.SetQuery($"SELECT COUNT(*) FROM groups_forums_posts WHERE parent_id='{id}'");
+                return int.Parse(commitableQueryReactor.GetString());
             }
         }
 
@@ -583,11 +661,11 @@ namespace Yupi.Game.Groups
         /// <returns>List&lt;List&lt;GroupUser&gt;&gt;.</returns>
         private static List<List<GroupMember>> Split(IEnumerable<GroupMember> source)
         {
-            return (from x in source.Select((x, i) => new { Index = i, Value = x })
-                    group x by x.Index / 14
+            return (from x in source.Select((x, i) => new {Index = i, Value = x})
+                group x by x.Index/14
                 into x
-                    select (from v in x
-                            select v.Value).ToList()).ToList();
+                select (from v in x
+                    select v.Value).ToList()).ToList();
         }
     }
 }

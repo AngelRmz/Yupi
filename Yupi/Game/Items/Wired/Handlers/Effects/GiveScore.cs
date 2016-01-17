@@ -50,11 +50,11 @@ namespace Yupi.Game.Items.Wired.Handlers.Effects
             if (stuff[0] == null)
                 return false;
 
-            if ((Interaction)stuff[1] == Interaction.TriggerScoreAchieved)
+            if ((Interaction) stuff[1] == Interaction.TriggerScoreAchieved)
                 return false;
 
 
-            var roomUser = (RoomUser)stuff[0];
+            RoomUser roomUser = (RoomUser) stuff[0];
 
             if (roomUser == null)
                 return false;
@@ -65,12 +65,12 @@ namespace Yupi.Game.Items.Wired.Handlers.Effects
             int timesDone;
             int.TryParse(OtherExtraString, out timesDone);
 
-            var scoreToAchieve = 10;
-            var maxTimes = 1;
+            int scoreToAchieve = 10;
+            int maxTimes = 1;
 
             if (!string.IsNullOrWhiteSpace(OtherString))
             {
-                var integers = OtherString.Split(',');
+                string[] integers = OtherString.Split(',');
                 scoreToAchieve = int.Parse(integers[0]);
                 maxTimes = int.Parse(integers[1]);
             }

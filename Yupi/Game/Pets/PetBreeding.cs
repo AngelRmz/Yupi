@@ -1,4 +1,28 @@
-﻿using Yupi.Messages;
+﻿/**
+     Because i love chocolat...                                      
+                                    88 88  
+                                    "" 88  
+                                       88  
+8b       d8 88       88 8b,dPPYba,  88 88  
+`8b     d8' 88       88 88P'    "8a 88 88  
+ `8b   d8'  88       88 88       d8 88 ""  
+  `8b,d8'   "8a,   ,a88 88b,   ,a8" 88 aa  
+    Y88'     `"YbbdP'Y8 88`YbbdP"'  88 88  
+    d8'                 88                 
+   d8'                  88     
+   
+   Private Habbo Hotel Emulating System
+   @author Claudio A. Santoro W.
+   @author Kessiler R.
+   @version dev-beta
+   @license MIT
+   @copyright Sulake Corporation Oy
+   @observation All Rights of Habbo, Habbo Hotel, and all Habbo contents and it's names, is copyright from Sulake
+   Corporation Oy. Yupi! has nothing linked with Sulake. 
+   This Emulator is Only for DEVELOPMENT uses. If you're selling this you're violating Sulakes Copyright.
+*/
+
+using Yupi.Messages;
 using Yupi.Messages.Parsers;
 
 namespace Yupi.Game.Pets
@@ -57,7 +81,7 @@ namespace Yupi.Game.Pets
         /// <returns>ServerMessage.</returns>
         internal static ServerMessage GetMessage(uint furniId, Pet pet1, Pet pet2)
         {
-            var message = new ServerMessage(LibraryParser.OutgoingRequest("PetBreedMessageComposer"));
+            ServerMessage message = new ServerMessage(LibraryParser.OutgoingRequest("PetBreedMessageComposer"));
 
             message.AppendInteger(furniId);
             message.AppendInteger(pet1.PetId);
@@ -76,18 +100,18 @@ namespace Yupi.Game.Pets
 
             switch (pet1.Type)
             {
-                case 3:
+                case "pet_terrier":
                     message.AppendInteger(TerrierEpicRace.Length);
 
-                    foreach (var value in TerrierEpicRace)
+                    foreach (int value in TerrierEpicRace)
                         message.AppendInteger(value);
 
                     break;
 
-                case 4:
+                case "pet_bear":
                     message.AppendInteger(BearEpicRace.Length);
 
-                    foreach (var value in BearEpicRace)
+                    foreach (int value in BearEpicRace)
                         message.AppendInteger(value);
 
                     break;
@@ -97,18 +121,18 @@ namespace Yupi.Game.Pets
 
             switch (pet1.Type)
             {
-                case 3:
+                case "pet_terrier":
                     message.AppendInteger(TerrierRareRace.Length);
 
-                    foreach (var value in TerrierRareRace)
+                    foreach (int value in TerrierRareRace)
                         message.AppendInteger(value);
 
                     break;
 
-                case 4:
+                case "pet_bear":
                     message.AppendInteger(BearRareRace.Length);
 
-                    foreach (var value in BearRareRace)
+                    foreach (int value in BearRareRace)
                         message.AppendInteger(value);
 
                     break;
@@ -118,18 +142,18 @@ namespace Yupi.Game.Pets
 
             switch (pet1.Type)
             {
-                case 3:
+                case "pet_terrier":
                     message.AppendInteger(TerrierNoRareRace.Length);
 
-                    foreach (var value in TerrierNoRareRace)
+                    foreach (int value in TerrierNoRareRace)
                         message.AppendInteger(value);
 
                     break;
 
-                case 4:
+                case "pet_bear":
                     message.AppendInteger(BearNoRareRace.Length);
 
-                    foreach (var value in BearNoRareRace)
+                    foreach (int value in BearNoRareRace)
                         message.AppendInteger(value);
 
                     break;
@@ -139,24 +163,26 @@ namespace Yupi.Game.Pets
 
             switch (pet1.Type)
             {
-                case 3:
+                case "pet_terrier":
                     message.AppendInteger(TerrierNormalRace.Length);
 
-                    foreach (var value in TerrierNormalRace)
+                    foreach (int value in TerrierNormalRace)
                         message.AppendInteger(value);
 
                     break;
 
-                case 4:
+                case "pet_bear":
                     message.AppendInteger(BearNormalRace.Length);
 
-                    foreach (var value in BearNormalRace)
+                    foreach (int value in BearNormalRace)
                         message.AppendInteger(value);
 
                     break;
             }
 
-            message.AppendInteger((pet1.Type == 3) ? 25 : 24);
+            message.AppendInteger(pet1.Type == "pet_terrier"
+                ? PetTypeManager.GetPetRaceIdByType("pet_terrierbaby")
+                : PetTypeManager.GetPetRaceIdByType("pet_bearbaby"));
 
             return message;
         }

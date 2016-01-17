@@ -1,3 +1,27 @@
+/**
+     Because i love chocolat...                                      
+                                    88 88  
+                                    "" 88  
+                                       88  
+8b       d8 88       88 8b,dPPYba,  88 88  
+`8b     d8' 88       88 88P'    "8a 88 88  
+ `8b   d8'  88       88 88       d8 88 ""  
+  `8b,d8'   "8a,   ,a88 88b,   ,a8" 88 aa  
+    Y88'     `"YbbdP'Y8 88`YbbdP"'  88 88  
+    d8'                 88                 
+   d8'                  88     
+   
+   Private Habbo Hotel Emulating System
+   @author Claudio A. Santoro W.
+   @author Kessiler R.
+   @version dev-beta
+   @license MIT
+   @copyright Sulake Corporation Oy
+   @observation All Rights of Habbo, Habbo Hotel, and all Habbo contents and it's names, is copyright from Sulake
+   Corporation Oy. Yupi! has nothing linked with Sulake. 
+   This Emulator is Only for DEVELOPMENT uses. If you're selling this you're violating Sulakes Copyright.
+*/
+
 using System.Collections.Generic;
 using System.Linq;
 using Yupi.Game.RoomBots.Enumerators;
@@ -28,9 +52,14 @@ namespace Yupi.Game.RoomBots
         internal uint BotId;
 
         /// <summary>
+        ///     The bot type
+        /// </summary>
+        internal string BotType;
+
+        /// <summary>
         ///     The dance identifier
         /// </summary>
-        internal int DanceId;
+        internal uint DanceId;
 
         /// <summary>
         ///     The gender
@@ -110,7 +139,7 @@ namespace Yupi.Game.RoomBots
         /// <summary>
         ///     The speech interval
         /// </summary>
-        internal int SpeechInterval;
+        internal uint SpeechInterval;
 
         /// <summary>
         ///     The virtual identifier
@@ -141,11 +170,6 @@ namespace Yupi.Game.RoomBots
         ///     The z
         /// </summary>
         internal double Z;
-
-        /// <summary>
-        /// The bot type
-        /// </summary>
-        internal string BotType;
 
         /// <summary>
         ///     Initializes a new instance of the <see cref="RoomBot" /> class.
@@ -185,7 +209,9 @@ namespace Yupi.Game.RoomBots
         /// <param name="gender">The gender.</param>
         /// <param name="dance">The dance.</param>
         /// <param name="botType"></param>
-        internal RoomBot(uint botId, uint ownerId, uint roomId, AiType aiType, string walkingMode, string name, string motto, string look, int x, int y, double z, int rot, List<string> speeches, List<string> responses, string gender, int dance, string botType)
+        internal RoomBot(uint botId, uint ownerId, uint roomId, AiType aiType, string walkingMode, string name,
+            string motto, string look, int x, int y, double z, int rot, List<string> speeches, List<string> responses,
+            string gender, uint dance, string botType)
         {
             OwnerId = ownerId;
             BotId = botId;
@@ -239,7 +265,9 @@ namespace Yupi.Game.RoomBots
         /// <param name="speechInterval">The speech interval.</param>
         /// <param name="automaticChat">if set to <c>true</c> [automatic chat].</param>
         /// <param name="mixPhrases">if set to <c>true</c> [mix phrases].</param>
-        internal void Update(uint roomId, string walkingMode, string name, string motto, string look, int x, int y, double z, int rot, int minX, int minY, int maxX, int maxY, List<string> speeches, List<string> responses, string gender, int dance, int speechInterval, bool automaticChat, bool mixPhrases)
+        internal void Update(uint roomId, string walkingMode, string name, string motto, string look, int x, int y,
+            double z, int rot, int minX, int minY, int maxX, int maxY, List<string> speeches, List<string> responses,
+            string gender, uint dance, uint speechInterval, bool automaticChat, bool mixPhrases)
         {
             RoomId = roomId;
             WalkingMode = walkingMode;
@@ -282,7 +310,7 @@ namespace Yupi.Game.RoomBots
             if (LastSpokenPhrase >= RandomSpeech.Count)
                 LastSpokenPhrase = 1;
 
-            var result = RandomSpeech[LastSpokenPhrase - 1];
+            string result = RandomSpeech[LastSpokenPhrase - 1];
 
             LastSpokenPhrase++;
 
@@ -297,7 +325,7 @@ namespace Yupi.Game.RoomBots
         /// <returns>BotAI.</returns>
         internal BotAi GenerateBotAi(int virtualId, int botId)
         {
-            var aiType = AiType;
+            AiType aiType = AiType;
 
             if (aiType == AiType.Pet)
                 return new PetBot(virtualId);

@@ -24,7 +24,7 @@ namespace Yupi.Game.Commands.Controllers
         public override bool Execute(GameClient session, string[] pms)
         {
             {
-                var user = Yupi.GetGame().GetClientManager().GetClientByUserName(pms[0]);
+                GameClient user = Yupi.GetGame().GetClientManager().GetClientByUserName(pms[0]);
 
                 if (user == null)
                 {
@@ -38,9 +38,9 @@ namespace Yupi.Game.Commands.Controllers
                 }
                 try
                 {
-                    var length = int.Parse(pms[1]);
+                    int length = int.Parse(pms[1]);
 
-                    var message = pms.Length < 3 ? string.Empty : string.Join(" ", pms.Skip(2));
+                    string message = pms.Length < 3 ? string.Empty : string.Join(" ", pms.Skip(2));
                     if (string.IsNullOrWhiteSpace(message))
                         message = Yupi.GetLanguage().GetVar("command_ban_user_no_reason");
 
@@ -48,7 +48,7 @@ namespace Yupi.Game.Commands.Controllers
                     Yupi.GetGame()
                         .GetModerationTool()
                         .LogStaffEntry(session.GetHabbo().UserName, user.GetHabbo().UserName, "Ban",
-                            string.Format("USER:{0} TIME:{1} REASON:{2}", pms[0], pms[1], pms[2]));
+                            $"USER:{pms[0]} TIME:{pms[1]} REASON:{pms[2]}");
                 }
                 catch
                 {
